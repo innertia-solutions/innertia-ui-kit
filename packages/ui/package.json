@@ -4,6 +4,10 @@
   "description": "Innertia Solutions — Nuxt UI layer: components and composables",
   "keywords": ["nuxt", "vue", "components", "design-system"],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/innertia-solutions/innertia-ui-kit"
+  },
   "publishConfig": {
     "access": "public"
   },
