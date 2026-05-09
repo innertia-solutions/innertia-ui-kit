@@ -1,0 +1,22 @@
+{
+  "name": "@innertia-solutions/ui",
+  "version": "0.1.0",
+  "description": "Innertia Solutions — Nuxt UI layer: components and composables",
+  "keywords": ["nuxt", "vue", "components", "design-system"],
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "./nuxt.config.ts",
+  "exports": {
+    ".": "./nuxt.config.ts"
+  },
+  "peerDependencies": {
+    "nuxt": ">=3.0.0",
+    "vue": ">=3.0.0"
+  },
+  "devDependencies": {
+    "nuxt": "^3.16.0",
+    "vue": "^3.5.0"
+  }
+}

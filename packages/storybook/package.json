@@ -1,0 +1,17 @@
+{
+  "name": "@innertia-solutions/storybook",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Innertia Solutions — component playground",
+  "scripts": {
+    "dev": "nuxt dev",
+    "build": "nuxt build"
+  },
+  "dependencies": {
+    "@innertia-solutions/ui": "workspace:*",
+    "@innertia-solutions/theme": "workspace:*"
+  },
+  "devDependencies": {
+    "nuxt": "^3.16.0"
+  }
+}

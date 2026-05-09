@@ -1,0 +1,17 @@
+{
+  "name": "innertia-ui-kit",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Innertia Solutions — shared design system, components and composables",
+  "scripts": {
+    "dev": "pnpm --filter @innertia-solutions/storybook dev",
+    "build:ui": "pnpm --filter @innertia-solutions/ui build",
+    "build:theme": "pnpm --filter @innertia-solutions/theme build",
+    "publish:ui": "pnpm --filter @innertia-solutions/ui publish --access public",
+    "publish:theme": "pnpm --filter @innertia-solutions/theme publish --access public"
+  },
+  "engines": {
+    "node": ">=20",
+    "pnpm": ">=9"
+  }
+}

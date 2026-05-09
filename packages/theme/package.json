@@ -1,0 +1,19 @@
+{
+  "name": "@innertia-solutions/theme",
+  "version": "0.1.0",
+  "description": "Innertia Solutions — Tailwind + Preline base theme",
+  "keywords": ["tailwind", "preline", "theme", "design-system"],
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "./tailwind.config.js",
+  "exports": {
+    ".": "./tailwind.config.js",
+    "./tailwind.config": "./tailwind.config.js",
+    "./theme.css": "./theme.css"
+  },
+  "peerDependencies": {
+    "tailwindcss": ">=4.0.0"
+  }
+}
