@@ -1,0 +1,79 @@
+name: NPM Token Expiry Reminder
+
+on:
+  schedule:
+    # Runs every day at 9am UTC — checks if token expires in ~7 days
+    - cron: '0 9 * * *'
+  workflow_dispatch:
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+
+    steps:
+      - name: Check token expiry and create issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const secret = context.payload?.inputs?.expiry_date;
+
+            // Read expiry from repo variable NPM_TOKEN_EXPIRY (format: YYYY-MM-DD)
+            let expiryDate;
+            try {
+              const { data } = await github.rest.actions.getRepoVariable({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: 'NPM_TOKEN_EXPIRY',
+              });
+              expiryDate = new Date(data.value);
+            } catch (e) {
+              core.warning('NPM_TOKEN_EXPIRY variable not set. Create it at Settings → Variables.');
+              return;
+            }
+
+            const today = new Date();
+            const daysLeft = Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24));
+
+            core.info(`NPM token expires in ${daysLeft} days (${expiryDate.toDateString()})`);
+
+            if (daysLeft > 7) {
+              core.info('Token still valid, no action needed.');
+              return;
+            }
+
+            // Check if there's already an open issue
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'npm-token-expiry',
+            });
+
+            if (issues.length > 0) {
+              core.info('Reminder issue already open, skipping.');
+              return;
+            }
+
+            // Create issue
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `⚠️ NPM Token expires in ${daysLeft} days`,
+              body: [
+                '## NPM Token Renewal Required',
+                '',
+                `The \`NPM_TOKEN\` secret expires on **${expiryDate.toDateString()}** (${daysLeft} days left).`,
+                '',
+                '### Steps to renew:',
+                '1. Go to [npmjs.com → Access Tokens](https://www.npmjs.com/settings/~/tokens)',
+                '2. Generate a new **Granular Access Token** with 90 days and `read and write` permissions for `@innertia-solutions`',
+                '3. Go to [GitHub Secrets](../../settings/secrets/actions) and update `NPM_TOKEN`',
+                '4. Update the `NPM_TOKEN_EXPIRY` variable in [GitHub Variables](../../settings/variables/actions) with the new date (`YYYY-MM-DD`)',
+                '5. Close this issue',
+              ].join('\n'),
+              labels: ['npm-token-expiry'],
+            });
+
+            core.info(`Created reminder issue — token expires in ${daysLeft} days`);
