@@ -4,8 +4,7 @@
   "version": "0.0.0",
   "description": "Innertia Solutions — shared design system, components and composables",
   "scripts": {
-    "dev": "pnpm --filter @innertia-solutions/storybook dev",
-    "release": "./scripts/publish.sh"
+    "dev": "pnpm --filter @innertia-solutions/storybook dev"
   },
   "engines": {
     "node": ">=20",
