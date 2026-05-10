@@ -24,7 +24,6 @@ export default defineNuxtPlugin(async () => {
       setTimeout(initPreline, 500)
     }
 
-    // Inicialización inicial
     if (document.readyState === 'loading') {
       document.addEventListener('DOMContentLoaded', performMultipleInits)
     } else {
@@ -33,7 +32,6 @@ export default defineNuxtPlugin(async () => {
 
     const nuxtApp = useNuxtApp()
 
-    // Re-inicializar en cada cambio de página
     nuxtApp.hooks.hook('page:finish', () => {
       requestAnimationFrame(performMultipleInits)
     })
@@ -42,7 +40,6 @@ export default defineNuxtPlugin(async () => {
       performMultipleInits()
     })
 
-    // MutationObserver: reinicializar cuando aparezcan elementos Preline en el DOM
     const observer = new MutationObserver((mutations) => {
       const hasPreline = mutations.some(({ addedNodes }) =>
         Array.from(addedNodes).some((node) => {
@@ -72,6 +69,6 @@ export default defineNuxtPlugin(async () => {
     }
 
   } catch (e) {
-    console.warn('[innertia-ui] Error al cargar Preline:', e)
+    console.warn('[innertia-theme] Error al cargar Preline:', e)
   }
 })
