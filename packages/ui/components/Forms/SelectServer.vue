@@ -1,198 +1,38 @@
 <script setup>
 // Props del componente
 const props = defineProps({
-  // Endpoint para la carga (SSR)
-  endpoint: {
-    type: String,
-    required: true,
-  },
+  // Endpoint para la carga desde API
+  endpoint: { type: String, required: true },
+  listFormat: { type: Boolean, default: true },
+  perPage: { type: Number, default: 15 },
+  initialOptions: { type: Array, default: () => [] },
 
-  listFormat: {
-    type: Boolean,
-    required: false,
-    default: true,
-  },
+  // v-model
+  modelValue: { type: [String, Number, Array, Object], default: null },
 
-  perPage: {
-    type: Number,
-    required: false,
-    default: 15,
-  },
+  // Form wrapper
+  label: { type: String, default: "" },
+  placeholder: { type: String, default: "Seleccionar..." },
+  hint: { type: String, default: "" },
+  error: { type: String, default: "" },
 
-  initialOptions: {
-    type: Array,
-    required: false,
-    default: () => [],
-  },
+  // Functional
+  multiple: { type: Boolean, default: false },
+  searchable: { type: Boolean, default: true },
+  disabled: { type: Boolean, default: false },
+  clearable: { type: Boolean, default: false },
+  searchPlaceholder: { type: String, default: "Buscar..." },
+  minSearchLength: { type: Number, default: 0 },
+  tagsMode: { type: Boolean, default: false },
+  showCounter: { type: Boolean, default: false },
+  maxSelection: { type: Number, default: 0 },
+  allowEmpty: { type: Boolean, default: true },
+  closeOnSelect: { type: Boolean, default: true },
 
-  // v-model binding
-  modelValue: {
-    type: [String, Number, Array, Object],
-    required: false,
-    default: null,
-  },
-
-  // Basic configuration
-  placeholder: {
-    type: String,
-    required: false,
-    default: "Seleccionar opción...",
-  },
-
-  // Size configuration
-  size: {
-    type: String,
-    required: false,
-    default: "sm",
-    validator: (value) => ["xs", "sm", "md", "lg"].includes(value),
-  },
-
-  // Style configuration
-  class: {
-    type: String,
-    required: false,
-    default: "",
-  },
-
-  severity: {
-    type: String,
-    required: false,
-    default: "primary",
-    validator: (value) =>
-      ["primary", "secondary", "success", "danger", "warning", "info"].includes(
-        value
-      ),
-  },
-
-  // Functional properties
-  multiple: {
-    type: Boolean,
-    required: false,
-    default: false,
-  },
-
-  searchable: {
-    type: Boolean,
-    required: false,
-    default: false,
-  },
-
-  loading: {
-    type: Boolean,
-    required: false,
-    default: false,
-  },
-
-  disabled: {
-    type: Boolean,
-    required: false,
-    default: false,
-  },
-
-  clearable: {
-    type: Boolean,
-    required: false,
-    default: false,
-  },
-
-  // Search configuration
-  searchPlaceholder: {
-    type: String,
-    required: false,
-    default: "Buscar...",
-  },
-
-  minSearchLength: {
-    type: Number,
-    required: false,
-    default: 0,
-  },
-
-  searchLimit: {
-    type: Number,
-    required: false,
-    default: 0,
-  },
-
-  // Multiple selection configuration
-  tagsMode: {
-    type: Boolean,
-    required: false,
-    default: false,
-  },
-
-  showCounter: {
-    type: Boolean,
-    required: false,
-    default: false,
-  },
-
-  maxSelection: {
-    type: Number,
-    required: false,
-    default: 0,
-  },
-
-  // Form integration
-  name: {
-    type: String,
-    required: false,
-    default: "",
-  },
-
-  // Event control
-  emitFocusEvents: {
-    type: Boolean,
-    required: false,
-    default: false,
-  },
-
-  // Validation
-  errorMessage: {
-    type: String,
-    required: false,
-    default: "",
-  },
-
-  successMessage: {
-    type: String,
-    required: false,
-    default: "",
-  },
-
-  // Advanced options
-  allowEmpty: {
-    type: Boolean,
-    required: false,
-    default: true,
-  },
-
-  closeOnSelect: {
-    type: Boolean,
-    required: false,
-    default: true,
-  },
-
-  // Campo personalizable para mostrar como texto/label
-  labelKey: {
-    type: String,
-    required: false,
-    default: "label",
-  },
-
-  // Campo personalizable para el valor real
-  valueKey: {
-    type: String,
-    required: false,
-    default: "id",
-  },
-
-  // Campo personalizable para descripción adicional
-  descriptionKey: {
-    type: String,
-    required: false,
-    default: "description",
-  },
+  // Claves de campo
+  labelKey: { type: String, default: "name" },
+  valueKey: { type: String, default: "id" },
+  descriptionKey: { type: String, default: "description" },
 });
 
 // Emits
@@ -490,13 +330,8 @@ const sizeClasses = computed(() => {
 
 // Computed classes for validation states
 const validationClasses = computed(() => {
-  if (props.errorMessage) {
-    return "border-red-500";
-  }
-  if (props.successMessage) {
-    return "border-emerald-500";
-  }
-  return "border-gray-200 dark:border-slate-700";
+  if (props.error) return "border-red-400 dark:border-red-500";
+  return "border-slate-200 dark:border-slate-700";
 });
 
 // Combined select classes
@@ -662,6 +497,12 @@ onMounted(() => {
 </script>
 
 <template>
+  <div class="space-y-1.5">
+    <!-- Label -->
+    <label v-if="label" class="block text-sm font-medium text-slate-700 dark:text-slate-300">
+      {{ label }}
+    </label>
+
   <div class="relative" ref="selectRef">
     <!-- Hidden input for form integration -->
     <input v-if="name" type="hidden" :name="name" :value="multiple
@@ -876,11 +717,10 @@ onMounted(() => {
     </Transition>
 
     <!-- Validation messages -->
-    <div v-if="errorMessage" class="mt-1 text-sm text-red-600 dark:text-red-400">
-      {{ errorMessage }}
-    </div>
-    <div v-if="successMessage" class="mt-1 text-sm text-green-600 dark:text-green-400">
-      {{ successMessage }}
-    </div>
+  </div>
+
+    <!-- Error / Hint -->
+    <p v-if="error" class="text-xs text-red-500 dark:text-red-400">{{ error }}</p>
+    <p v-else-if="hint" class="text-xs text-slate-400 dark:text-slate-500">{{ hint }}</p>
   </div>
 </template>
