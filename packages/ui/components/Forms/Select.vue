@@ -1,770 +1,100 @@
-<script setup>
-// Props del componente
-const props = defineProps({
-  // Data source
-  options: {
-    type: Array,
-    required: true,
-    default: () => [],
-  },
+<script setup lang="ts">
+const props = defineProps<{
+  options: { value: string | number; label: string }[]
+  modelValue?: string | number | null
+  label?: string
+  placeholder?: string
+  hint?: string
+  error?: string
+  disabled?: boolean
+}>()
 
-  // v-model binding
-  modelValue: {
-    type: [String, Number, Array, Object],
-    required: false,
-    default: null,
-  },
+const emit = defineEmits<{
+  'update:modelValue': [value: string | number | null]
+  change: [value: string | number | null]
+}>()
 
-  // Basic configuration
-  placeholder: {
-    type: String,
-    required: false,
-    default: "Seleccionar opción...",
-  },
+const selectRef = ref<HTMLSelectElement | null>(null)
 
-  // Size configuration
-  size: {
-    type: String,
-    required: false,
-    default: "sm",
-    validator: (value) => ["xs", "sm", "md", "lg"].includes(value),
-  },
+const reinitHsSelect = async () => {
+  await nextTick()
+  const el = selectRef.value
+  if (!el) return
 
-  // Style configuration
-  class: {
-    type: String,
-    required: false,
-    default: "",
-  },
+  const instance = (window as any).HSSelect?.getInstance?.(el)
+  if (instance?.destroy) instance.destroy()
 
-  severity: {
-    type: String,
-    required: false,
-    default: "primary",
-    validator: (value) =>
-      ["primary", "secondary", "success", "danger", "warning", "info"].includes(
-        value
-      ),
-  },
+  new (window as any).HSSelect(el)
+}
 
-  // Functional properties
-  multiple: {
-    type: Boolean,
-    required: false,
-    default: false,
-  },
+// Re-initialize when options change (async load)
+watch(() => props.options, async () => {
+  await reinitHsSelect()
+}, { deep: true })
 
-  searchable: {
-    type: Boolean,
-    required: false,
-    default: false,
-  },
-
-  loading: {
-    type: Boolean,
-    required: false,
-    default: false,
-  },
-
-  disabled: {
-    type: Boolean,
-    required: false,
-    default: false,
-  },
-
-  clearable: {
-    type: Boolean,
-    required: false,
-    default: false,
-  },
-
-  // Search configuration
-  searchPlaceholder: {
-    type: String,
-    required: false,
-    default: "Buscar...",
-  },
-
-  minSearchLength: {
-    type: Number,
-    required: false,
-    default: 0,
-  },
-
-  searchLimit: {
-    type: Number,
-    required: false,
-    default: 0,
-  },
-
-  // Multiple selection configuration
-  tagsMode: {
-    type: Boolean,
-    required: false,
-    default: false,
-  },
-
-  showCounter: {
-    type: Boolean,
-    required: false,
-    default: false,
-  },
-
-  maxSelection: {
-    type: Number,
-    required: false,
-    default: 0,
-  },
-
-  // Form integration
-  name: {
-    type: String,
-    required: false,
-    default: "",
-  },
-
-  // Event control
-  emitFocusEvents: {
-    type: Boolean,
-    required: false,
-    default: false,
-  },
-
-  // Validation
-  errorMessage: {
-    type: String,
-    required: false,
-    default: "",
-  },
-
-  successMessage: {
-    type: String,
-    required: false,
-    default: "",
-  },
-
-  // Advanced options
-  allowEmpty: {
-    type: Boolean,
-    required: false,
-    default: true,
-  },
-
-  closeOnSelect: {
-    type: Boolean,
-    required: false,
-    default: true,
-  },
-
-  // Campo personalizable para mostrar como texto/label
-  labelKey: {
-    type: String,
-    required: false,
-    default: "label",
-  },
-
-  // Campo personalizable para el valor real
-  valueKey: {
-    type: String,
-    required: false,
-    default: "id",
-  },
-
-  // Campo personalizable para descripción adicional
-  descriptionKey: {
-    type: String,
-    required: false,
-    default: "description",
-  },
-});
-
-// Emits
-const emit = defineEmits(["update:modelValue", "blur", "change", "search", "clear"]);
-
-// Reactive state
-const isOpen = ref(false);
-const searchQuery = ref("");
-const selectRef = ref(null);
-const selectedOptions = ref([]);
-const focusedIndex = ref(-1);
-
-// Model value handling
-const localValue = computed({
-  get() {
-    return props.modelValue;
-  },
-  set(value) {
-    emit("update:modelValue", value);
-    emit("change", value);
-    nextTick(() => {
-      if (!props.name || !selectRef?.value) return;
-      const hidden = selectRef.value.querySelector(
-        `input[type="hidden"][name="${props.name}"]`
-      );
-      if (!hidden) return;
-      hidden.dispatchEvent(new Event('input', { bubbles: true }));
-      hidden.dispatchEvent(new Event('change', { bubbles: true }));
-    });
-  },
-});
-
-// Initialize selected options
-watch(
-  () => props.modelValue,
-  (newValue) => {
-    if (!props.options || props.options.length === 0) {
-      return;
-    }
-
-    try {
-      if (props.multiple && Array.isArray(newValue)) {
-        selectedOptions.value = newValue
-          .map((val) => {
-            try {
-              return props.options.find(
-                (opt) => getOptionValue(opt) === val || opt.id === val
-              );
-            } catch (error) {
-              return props.options.find((opt) => opt.id === val);
-            }
-          })
-          .filter(Boolean);
-      } else if (!props.multiple && newValue !== null && newValue !== undefined) {
-        try {
-          const option = props.options.find(
-            (opt) => getOptionValue(opt) === newValue || opt.id === newValue
-          );
-          selectedOptions.value = option ? [option] : [];
-        } catch (error) {
-          const option = props.options.find((opt) => opt.id === newValue);
-          selectedOptions.value = option ? [option] : [];
-        }
-      } else {
-        selectedOptions.value = [];
-      }
-    } catch (error) {
-      selectedOptions.value = [];
-    }
-  },
-  { immediate: true }
-);
-
-// Watch para cuando las opciones cambien, reactivar el procesamiento del modelValue
-watch(
-  () => props.options,
-  (newOptions) => {
-    if (newOptions && newOptions.length > 0 && props.modelValue) {
-      nextTick(() => {
-        const currentValue = props.modelValue;
-        if (currentValue) {
-          try {
-            if (props.multiple && Array.isArray(currentValue)) {
-              selectedOptions.value = currentValue
-                .map((val) => {
-                  try {
-                    return props.options.find(
-                      (opt) => getOptionValue(opt) === val || opt.id === val
-                    );
-                  } catch (error) {
-                    return props.options.find((opt) => opt.id === val);
-                  }
-                })
-                .filter(Boolean);
-            } else if (!props.multiple && currentValue !== null && currentValue !== undefined) {
-              try {
-                const option = props.options.find(
-                  (opt) => getOptionValue(opt) === currentValue || opt.id === currentValue
-                );
-                selectedOptions.value = option ? [option] : [];
-              } catch (error) {
-                const option = props.options.find((opt) => opt.id === currentValue);
-                selectedOptions.value = option ? [option] : [];
-              }
-            }
-          } catch (error) {
-            // silently handle
-          }
-        }
-      });
-    }
-  },
-  { immediate: false }
-);
-
-// Helper functions para extraer valores dinámicamente
-const getOptionLabel = (option) => {
-  if (props.labelKey === "key" && option.key) {
-    return option.key;
-  }
-  if (props.labelKey === "label" && option.label) {
-    return option.label;
-  }
-  if (props.labelKey === "name" && option.name) {
-    return option.name;
-  }
-  if (props.labelKey.includes(".")) {
-    const keys = props.labelKey.split(".");
-    let result = option;
-    for (const key of keys) {
-      result = result?.[key];
-    }
-    return result || option.key || option.label || option.name || "";
-  }
-  return (
-    option[props.labelKey] ||
-    option.label ||
-    option.key ||
-    option.name ||
-    option.value ||
-    ""
-  );
-};
-
-const getOptionValue = (option) => {
-  if (props.valueKey === "id" && option.id) {
-    return option.id;
-  }
-  if (props.valueKey === "value" && option.value !== undefined) {
-    return option.value;
-  }
-  if (props.valueKey === "key" && option.key) {
-    return option.key;
-  }
-  if (props.valueKey.includes(".")) {
-    const keys = props.valueKey.split(".");
-    let result = option;
-    for (const key of keys) {
-      result = result?.[key];
-    }
-    return result;
-  }
-  return option[props.valueKey] || option.value || option.id || option.key;
-};
-
-const getOptionDescription = (option) => {
-  if (!props.descriptionKey) return "";
-  if (props.descriptionKey.includes(".")) {
-    const keys = props.descriptionKey.split(".");
-    let result = option;
-    for (const key of keys) {
-      result = result?.[key];
-    }
-    return result || "";
-  }
-  return option[props.descriptionKey] || option.description || "";
-};
-
-// Computed classes for sizes
-const sizeClasses = computed(() => {
-  const sizes = {
-    xs: "py-1.5 px-3 text-xs",
-    sm: "py-2 px-3 text-sm",
-    md: "py-2 px-3 text-sm",
-    lg: "py-3 px-3 text-base",
-  };
-  return sizes[props.size] || sizes.sm;
-});
-
-// Computed classes for validation states
-const validationClasses = computed(() => {
-  if (props.errorMessage) {
-    return "border-red-500";
-  }
-  if (props.successMessage) {
-    return "border-emerald-500";
-  }
-  return "border-gray-200 dark:border-slate-700";
-});
-
-// Combined select classes
-const selectClasses = computed(() => {
-  let base, focus, disabled;
-
-  base =
-    "relative w-full rounded-lg border bg-white dark:bg-slate-800 transition-colors cursor-pointer text-slate-900 dark:text-white";
-
-  if (props.multiple && props.tagsMode) {
-    base += " px-3 pe-8 min-h-[2.375rem] flex items-center flex-wrap text-nowrap";
-    focus = "focus:outline-none focus:border-gray-400";
-  } else {
-    focus = "focus:outline-none focus:ring-0 focus:border-gray-400";
-  }
-
-  disabled = props.disabled || props.loading ? "opacity-50 cursor-not-allowed" : "";
-
-  const sizeClass = props.multiple && props.tagsMode ? "" : sizeClasses.value;
-
-  return `${base} ${sizeClass} ${validationClasses.value} ${focus} ${disabled} ${props.class}`;
-});
-
-// Filtered options based on search
-const filteredOptions = computed(() => {
-  if (
-    !props.searchable ||
-    !searchQuery.value ||
-    searchQuery.value.length < props.minSearchLength
-  ) {
-    return props.options;
-  }
-
-  const query = searchQuery.value.toLowerCase();
-  let filtered = props.options.filter((option) => {
-    const label = getOptionLabel(option).toLowerCase();
-    const description = getOptionDescription(option).toLowerCase();
-    return label.includes(query) || description.includes(query);
-  });
-
-  if (props.searchLimit > 0) {
-    filtered = filtered.slice(0, props.searchLimit);
-  }
-
-  return filtered;
-});
-
-// Display text for selected values
-const displayText = computed(() => {
-  if (props.loading) return "Cargando...";
-
-  if (!selectedOptions.value.length) return props.placeholder;
-
-  if (props.multiple) {
-    if (props.showCounter && selectedOptions.value.length > 1) {
-      return `${selectedOptions.value.length} seleccionados`;
-    }
-    if (props.tagsMode) {
-      return selectedOptions.value.map((opt) => getOptionLabel(opt)).join(", ");
-    }
-    return selectedOptions.value.map((opt) => getOptionLabel(opt)).join(", ");
-  }
-
-  return getOptionLabel(selectedOptions.value[0]) || props.placeholder;
-});
-
-// Methods
-const toggleSelect = () => {
-  if (props.disabled || props.loading) return;
-  isOpen.value = !isOpen.value;
-  if (isOpen.value && props.searchable) {
-    nextTick(() => {
-      const searchInput = selectRef.value?.querySelector(
-        'input[type="search"]'
-      );
-      searchInput?.focus();
-    });
-  }
-};
-
-const selectOption = (option) => {
-  if (option.disabled) return;
-
-  if (props.multiple) {
-    const index = selectedOptions.value.findIndex(
-      (opt) => opt.id === option.id
-    );
-    if (index > -1) {
-      selectedOptions.value.splice(index, 1);
-    } else {
-      if (
-        props.maxSelection === 0 ||
-        selectedOptions.value.length < props.maxSelection
-      ) {
-        selectedOptions.value.push(option);
-      }
-    }
-    localValue.value = selectedOptions.value.map((opt) => getOptionValue(opt));
-  } else {
-    selectedOptions.value = [option];
-    localValue.value = getOptionValue(option);
-    if (props.closeOnSelect) {
-      isOpen.value = false;
-    }
-  }
-};
-
-const removeTag = (option) => {
-  if (props.disabled) return;
-  const index = selectedOptions.value.findIndex((opt) => opt.id === option.id);
-  if (index > -1) {
-    selectedOptions.value.splice(index, 1);
-    localValue.value = selectedOptions.value.map((opt) => getOptionValue(opt));
-  }
-};
-
-const clearSelection = () => {
-  if (props.disabled) return;
-  selectedOptions.value = [];
-  localValue.value = props.multiple ? [] : null;
-  emit("clear");
-};
-
-const isOptionSelected = (option) => {
-  return selectedOptions.value.some((opt) => opt.id === option.id);
-};
-
-const handleSearchInput = (event) => {
-  searchQuery.value = event.target.value;
-  emit("search", searchQuery.value);
-};
-
-const clearSearch = () => {
-  searchQuery.value = "";
-  emit("search", "");
-};
-
-// Keyboard navigation
-const handleKeydown = (event) => {
-  if (props.disabled || props.loading) return;
-
-  switch (event.key) {
-    case "Enter":
-    case " ":
-      event.preventDefault();
-      if (!isOpen.value) {
-        toggleSelect();
-      } else if (
-        focusedIndex.value >= 0 &&
-        filteredOptions.value[focusedIndex.value]
-      ) {
-        selectOption(filteredOptions.value[focusedIndex.value]);
-      }
-      break;
-    case "Escape":
-      isOpen.value = false;
-      break;
-    case "ArrowDown":
-      event.preventDefault();
-      if (!isOpen.value) {
-        toggleSelect();
-      } else {
-        focusedIndex.value = Math.min(
-          focusedIndex.value + 1,
-          filteredOptions.value.length - 1
-        );
-      }
-      break;
-    case "ArrowUp":
-      event.preventDefault();
-      if (isOpen.value) {
-        focusedIndex.value = Math.max(focusedIndex.value - 1, -1);
-      }
-      break;
-  }
-};
-
-// Click outside to close
 onMounted(() => {
-  document.addEventListener("click", (event) => {
-    if (selectRef.value && !selectRef.value.contains(event.target)) {
-      isOpen.value = false;
-    }
-  });
-});
+  reinitHsSelect()
+})
+
+const handleChange = (e: Event) => {
+  const val = (e.target as HTMLSelectElement).value
+  emit('update:modelValue', val || null)
+  emit('change', val || null)
+}
 </script>
 
 <template>
-  <div class="relative" ref="selectRef">
-    <!-- Hidden input for form integration -->
-    <input v-if="name" type="hidden" :name="name" :value="multiple
-      ? Array.isArray(modelValue)
-        ? modelValue.join(',')
-        : ''
-      : modelValue || ''
-      " />
+  <div class="space-y-1.5">
+    <!-- Label -->
+    <label v-if="label" class="block text-sm font-medium text-slate-700 dark:text-slate-300">
+      {{ label }}
+    </label>
 
-    <!-- Select button/trigger -->
-    <button type="button" :class="selectClasses" @click="toggleSelect" @keydown="handleKeydown"
-      :disabled="disabled || loading" :aria-expanded="isOpen" :aria-haspopup="true" :name="name">
-      <!-- Loading spinner -->
-      <div v-if="loading" class="flex items-center">
-        <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2"></div>
-        <span>Cargando...</span>
+    <!-- Select (HSSelect) -->
+    <ClientOnly>
+      <template #fallback>
+        <div class="h-[38px] bg-slate-100 dark:bg-slate-800 animate-pulse rounded-lg" />
+      </template>
+
+      <div :class="['relative', error ? 'select-error' : '']">
+        <select
+          ref="selectRef"
+          class="hs-select w-full"
+          :value="modelValue ?? ''"
+          :disabled="disabled"
+          @change="handleChange"
+          data-hs-select='{
+            "placeholder": "Seleccionar...",
+            "toggleTag": "<button type=\"button\" aria-expanded=\"false\"></button>",
+            "toggleClasses": "hs-select-disabled:pointer-events-none hs-select-disabled:opacity-50 relative py-2 ps-4 pe-9 flex gap-x-2 text-nowrap w-full cursor-pointer bg-white border border-slate-200 rounded-lg text-start text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300 dark:focus:outline-hidden dark:focus:ring-1 dark:focus:ring-blue-600",
+            "dropdownClasses": "mt-1 z-50 w-full max-h-72 p-1 space-y-0.5 bg-white border border-slate-200 rounded-lg overflow-hidden overflow-y-auto shadow-lg dark:bg-slate-800 dark:border-slate-700",
+            "optionClasses": "py-2 px-4 w-full text-sm text-slate-800 cursor-pointer hover:bg-slate-100 rounded-lg focus:outline-hidden focus:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 dark:focus:bg-slate-700",
+            "optionTemplate": "<div class=\"flex justify-between items-center w-full\"><span data-title></span><span class=\"hidden hs-selected:block\"><svg class=\"shrink-0 size-3.5 text-blue-600 dark:text-blue-500\" xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><polyline points=\"20 6 9 17 4 12\"/></svg></span></div>"
+          }'
+        >
+          <option value="">{{ placeholder ?? 'Seleccionar...' }}</option>
+          <option
+            v-for="option in options"
+            :key="option.value"
+            :value="option.value"
+          >
+            {{ option.label }}
+          </option>
+        </select>
       </div>
+    </ClientOnly>
 
-      <!-- Selected values display -->
-      <div v-else class="flex items-center justify-between w-full">
-        <!-- Tags mode for multiple selection -->
-        <div v-if="multiple && tagsMode && selectedOptions.length" class="flex flex-wrap items-center gap-1 flex-1">
-          <div v-for="option in selectedOptions" :key="option.id"
-            class="flex flex-nowrap items-center relative z-10 bg-white border border-gray-200 rounded-full p-1 m-1 dark:bg-gray-900 dark:border-gray-700">
-            <!-- Avatar/Icon -->
-            <div v-if="option.avatar || option.icon" class="size-6 me-1">
-              <img v-if="option.avatar" :src="option.avatar" :alt="getOptionLabel(option)"
-                class="inline-block rounded-full size-6" />
-              <div v-else-if="option.icon" v-html="option.icon" class="size-6"></div>
-            </div>
+    <!-- Error -->
+    <p v-if="error" class="text-xs text-red-500 dark:text-red-400">{{ error }}</p>
 
-            <!-- Label -->
-            <div class="whitespace-nowrap text-gray-800 dark:text-gray-200 text-sm pl-1.5">
-              <slot name="tag" :option="option">
-                {{ getOptionLabel(option) }}
-              </slot>
-            </div>
-
-            <!-- Remove button -->
-            <button type="button" v-if="!disabled" @click.stop="removeTag(option)"
-              class="inline-flex shrink-0 justify-center items-center size-5 ms-2 rounded-full text-gray-800 bg-gray-200 hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 text-sm dark:bg-gray-700/50 dark:hover:bg-gray-700 dark:text-gray-400 cursor-pointer">
-              <svg class="shrink-0 size-3" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M18 6 6 18" />
-                <path d="m6 6 12 12" />
-              </svg>
-            </button>
-          </div>
-          <span v-if="!selectedOptions.length" class="text-gray-500 dark:text-gray-400 py-2.5 px-2">
-            {{ placeholder }}
-          </span>
-        </div>
-
-        <span v-else class="truncate flex-1 text-left pr-10"
-          :class="{ 'text-gray-400 dark:text-slate-500': !selectedOptions.length, 'text-slate-900 dark:text-white': selectedOptions.length }">
-          <slot name="display" :selectedOptions="selectedOptions" :displayText="displayText">
-            {{ displayText }}
-          </slot>
-        </span>
-
-        <!-- Clear button -->
-        <button type="button" v-if="clearable && selectedOptions.length && !disabled && !loading"
-          @click.stop="clearSelection"
-          class="absolute end-8 top-1/2 -translate-y-1/2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full p-1 transition-colors focus:outline-none focus:ring-1 focus:ring-slate-400">
-          <svg class="size-3.5 text-slate-400" fill="currentColor" viewBox="0 0 20 20">
-            <path fill-rule="evenodd"
-              d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-              clip-rule="evenodd"></path>
-          </svg>
-        </button>
-
-        <!-- Dropdown arrow -->
-        <div class="absolute top-1/2 end-3 -translate-y-1/2">
-          <svg class="shrink-0 size-3.5 text-gray-500 dark:text-gray-500 transition-transform"
-            :class="{ 'rotate-180': isOpen }" xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-            stroke-linejoin="round">
-            <path d="m7 15 5 5 5-5" />
-            <path d="m7 9 5-5 5 5" />
-          </svg>
-        </div>
-      </div>
-    </button>
-
-    <!-- Dropdown menu -->
-    <Transition enter-active-class="transition ease-out duration-100" enter-from-class="transform opacity-0 scale-95"
-      enter-to-class="transform opacity-100 scale-100" leave-active-class="transition ease-in duration-75"
-      leave-from-class="transform opacity-100 scale-100" leave-to-class="transform opacity-0 scale-95">
-      <div v-show="isOpen"
-        class="absolute z-50 w-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl max-h-60 overflow-auto">
-        <!-- Search input -->
-        <div v-if="searchable" class="p-2 border-b border-slate-100 dark:border-slate-700/50 relative">
-          <input type="text" v-model="searchQuery" :placeholder="searchPlaceholder" @input="handleSearchInput"
-            @keydown.enter.prevent
-            class="w-full px-3 py-2.5 pr-8 border border-gray-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-0 focus:border-gray-400 dark:bg-slate-700 dark:text-white text-sm transition-colors" />
-          <button type="button" v-if="searchQuery" @click.prevent="clearSearch"
-            class="absolute top-1/2 right-4 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-            <svg class="size-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        <!-- Empty option -->
-        <button type="button" v-if="allowEmpty && !multiple" @click="
-          selectOption({ id: '__empty__', value: null, label: 'Ninguno' })
-          " class="w-full px-3 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
-          <slot name="empty-option">
-            <span class="text-gray-500 dark:text-gray-400">Ninguno</span>
-          </slot>
-        </button>
-
-        <!-- Options list -->
-        <div v-if="filteredOptions.length">
-          <button type="button" v-for="(option, index) in filteredOptions" :key="option.id"
-            @click="selectOption(option)" :class="[
-              'w-full px-3 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center text-sm',
-              {
-                'bg-slate-50 dark:bg-slate-700/50': isOptionSelected(option),
-                'opacity-50 cursor-not-allowed': option.disabled,
-                'bg-slate-100 dark:bg-slate-700': focusedIndex === index,
-              },
-            ]" :disabled="option.disabled">
-            <!-- Multiple selection checkbox -->
-            <div v-if="multiple" class="mr-2">
-              <div :class="[
-                'w-4 h-4 rounded-lg border-2 flex items-center justify-center',
-                isOptionSelected(option)
-                  ? 'bg-slate-600 border-slate-600 text-white'
-                  : 'border-slate-300 dark:border-slate-600',
-              ]">
-                <svg v-if="isOptionSelected(option)" class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd"
-                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                    clip-rule="evenodd"></path>
-                </svg>
-              </div>
-            </div>
-
-            <!-- Option content -->
-            <div class="flex items-center flex-1">
-              <!-- Avatar/Icon -->
-              <div v-if="option.avatar || option.icon" class="mr-3">
-                <img v-if="option.avatar" :src="option.avatar" :alt="option.label" class="w-6 h-6 rounded-full" />
-                <component v-else-if="option.icon" :is="option.icon" class="w-5 h-5 text-gray-500" />
-              </div>
-
-              <!-- Option text -->
-              <div class="flex-1">
-                <slot name="option" :option="option" :selected="isOptionSelected(option)">
-                  <div>
-                    <div class="font-bold text-slate-800 dark:text-slate-200">
-                      {{ getOptionLabel(option) }}
-                    </div>
-                    <div v-if="getOptionDescription(option)"
-                      class="text-[10px] text-slate-400 uppercase tracking-tight">
-                      {{ getOptionDescription(option) }}
-                    </div>
-                  </div>
-                </slot>
-              </div>
-
-              <!-- Selection indicator for single mode -->
-              <div v-if="!multiple && isOptionSelected(option)" class="ml-2">
-                <svg class="w-4 h-4 text-slate-500" fill="currentColor" viewBox="0 0 20 20">
-                  <path fill-rule="evenodd"
-                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                    clip-rule="evenodd"></path>
-                </svg>
-              </div>
-            </div>
-          </button>
-        </div>
-
-        <!-- No options message -->
-        <div v-else-if="searchQuery && filteredOptions.length === 0"
-          class="px-3 py-4 text-center text-gray-500 dark:text-gray-400 text-sm">
-          <slot name="no-options"> No se encontraron opciones </slot>
-        </div>
-
-        <!-- No data message -->
-        <div v-else-if="!options.length" class="px-3 py-8 text-center">
-          <div class="flex flex-col items-center gap-y-2">
-            <div class="size-10 rounded-full bg-slate-50 dark:bg-slate-900/50 flex items-center justify-center">
-              <svg class="size-5 text-slate-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                stroke-width="1.5" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round"
-                  d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
-              </svg>
-            </div>
-            <p class="text-sm font-bold text-slate-400">No hay datos disponibles</p>
-            <p class="text-[10px] text-slate-300 uppercase font-black tracking-widest">Intenta refrescar la página</p>
-          </div>
-        </div>
-      </div>
-    </Transition>
-
-    <!-- Validation messages -->
-    <div v-if="errorMessage" class="mt-1 text-sm text-red-600 dark:text-red-400">
-      {{ errorMessage }}
-    </div>
-    <div v-if="successMessage" class="mt-1 text-sm text-green-600 dark:text-green-400">
-      {{ successMessage }}
-    </div>
+    <!-- Hint -->
+    <p v-else-if="hint" class="text-xs text-slate-400 dark:text-slate-500">{{ hint }}</p>
   </div>
 </template>
+
+<style scoped>
+/* Apply error border to the HSSelect toggle button when in error state */
+.select-error :deep(button[aria-expanded]) {
+  border-color: rgb(248 113 113) !important; /* red-400 */
+}
+</style>
