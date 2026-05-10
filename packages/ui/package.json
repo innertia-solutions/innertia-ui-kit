@@ -1,6 +1,6 @@
 {
   "name": "@innertia-solutions/ui",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Innertia Solutions — Nuxt UI layer: components and composables",
   "keywords": [
     "nuxt",
