@@ -22,7 +22,8 @@
   },
   "peerDependencies": {
     "nuxt": ">=3.0.0",
-    "vue": ">=3.0.0"
+    "vue": ">=3.0.0",
+    "preline": ">=2.0.0"
   },
   "devDependencies": {
     "nuxt": "^3.16.0",
