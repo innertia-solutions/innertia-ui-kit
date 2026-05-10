@@ -1,10 +1,27 @@
 <script setup>
 // Props del componente
 const props = defineProps({
-  // Data source
-  options: {
-    type: Array,
+  // Endpoint para la carga (SSR)
+  endpoint: {
+    type: String,
     required: true,
+  },
+
+  listFormat: {
+    type: Boolean,
+    required: false,
+    default: true,
+  },
+
+  perPage: {
+    type: Number,
+    required: false,
+    default: 15,
+  },
+
+  initialOptions: {
+    type: Array,
+    required: false,
     default: () => [],
   },
 
@@ -185,8 +202,111 @@ const emit = defineEmits(["update:modelValue", "blur", "change", "search", "clea
 const isOpen = ref(false);
 const searchQuery = ref("");
 const selectRef = ref(null);
+const optionsListRef = ref(null);
 const selectedOptions = ref([]);
 const focusedIndex = ref(-1);
+
+// SSR Data
+const isFetching = ref(false);
+const currentPage = ref(1);
+const hasMorePages = ref(true);
+const serverOptions = ref([...props.initialOptions]);
+
+const fetchOptions = async (page = 1, query = "") => {
+  if (isFetching.value || (!hasMorePages.value && page > 1)) return;
+
+  isFetching.value = true;
+  currentPage.value = page;
+
+  try {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      perPage: props.perPage.toString(),
+    });
+
+    if (query) {
+      params.append('search', query);
+    }
+
+    if (props.listFormat) {
+      params.append('list', 'true');
+    }
+
+    const api = useApi();
+    const { data, error } = await api.get(`${props.endpoint}?${params.toString()}`);
+
+    if (!error && data) {
+      let newItems = [];
+      let meta = null;
+
+      if (data.data && Array.isArray(data.data)) {
+        newItems = data.data;
+        meta = data.meta;
+      } else if (Array.isArray(data)) {
+        newItems = data;
+      }
+
+      if (page === 1) {
+        serverOptions.value = newItems;
+        hasMorePages.value = meta ? meta.current_page < meta.last_page : newItems.length >= props.perPage;
+      } else {
+        const existingIds = new Set(serverOptions.value.map(opt => opt.id));
+        const nonDuplicateItems = newItems.filter(opt => !existingIds.has(opt.id));
+        serverOptions.value = [...serverOptions.value, ...nonDuplicateItems];
+
+        if (nonDuplicateItems.length === 0 && newItems.length > 0) {
+          hasMorePages.value = false;
+        } else {
+          hasMorePages.value = meta ? meta.current_page < meta.last_page : newItems.length >= props.perPage;
+        }
+      }
+    }
+  } catch (err) {
+    // silently handle fetch errors
+  } finally {
+    isFetching.value = false;
+  }
+};
+
+let debounceTimer = null;
+const handleSearchInput = (event) => {
+  searchQuery.value = event.target.value;
+  emit("search", searchQuery.value);
+
+  if (debounceTimer) clearTimeout(debounceTimer);
+
+  debounceTimer = setTimeout(() => {
+    if (searchQuery.value.length === 0 || searchQuery.value.length >= props.minSearchLength) {
+      fetchOptions(1, searchQuery.value);
+      if (optionsListRef.value) {
+        optionsListRef.value.scrollTop = 0;
+      }
+    }
+  }, 300);
+};
+
+const clearSearch = () => {
+  searchQuery.value = "";
+  emit("search", "");
+  fetchOptions(1, "");
+};
+
+// Infinite scroll
+const handleScroll = (event) => {
+  const container = event.target;
+  if (container.scrollHeight - container.scrollTop <= container.clientHeight + 50) {
+    if (!isFetching.value && hasMorePages.value) {
+      fetchOptions(currentPage.value + 1, searchQuery.value);
+    }
+  }
+};
+
+// Initial load
+onMounted(() => {
+  if (props.initialOptions && props.initialOptions.length > 0) {
+    serverOptions.value = [...props.initialOptions];
+  }
+});
 
 // Model value handling
 const localValue = computed({
@@ -212,7 +332,7 @@ const localValue = computed({
 watch(
   () => props.modelValue,
   (newValue) => {
-    if (!props.options || props.options.length === 0) {
+    if (!serverOptions.value || serverOptions.value.length === 0) {
       return;
     }
 
@@ -221,22 +341,22 @@ watch(
         selectedOptions.value = newValue
           .map((val) => {
             try {
-              return props.options.find(
+              return serverOptions.value.find(
                 (opt) => getOptionValue(opt) === val || opt.id === val
               );
             } catch (error) {
-              return props.options.find((opt) => opt.id === val);
+              return serverOptions.value.find((opt) => opt.id === val);
             }
           })
           .filter(Boolean);
       } else if (!props.multiple && newValue !== null && newValue !== undefined) {
         try {
-          const option = props.options.find(
+          const option = serverOptions.value.find(
             (opt) => getOptionValue(opt) === newValue || opt.id === newValue
           );
           selectedOptions.value = option ? [option] : [];
         } catch (error) {
-          const option = props.options.find((opt) => opt.id === newValue);
+          const option = serverOptions.value.find((opt) => opt.id === newValue);
           selectedOptions.value = option ? [option] : [];
         }
       } else {
@@ -249,9 +369,9 @@ watch(
   { immediate: true }
 );
 
-// Watch para cuando las opciones cambien, reactivar el procesamiento del modelValue
+// Watch para cuando las opciones (serverOptions) cambien
 watch(
-  () => props.options,
+  () => serverOptions.value,
   (newOptions) => {
     if (newOptions && newOptions.length > 0 && props.modelValue) {
       nextTick(() => {
@@ -262,23 +382,26 @@ watch(
               selectedOptions.value = currentValue
                 .map((val) => {
                   try {
-                    return props.options.find(
+                    const existing = selectedOptions.value.find(s => getOptionValue(s) === val);
+                    const found = serverOptions.value.find(
                       (opt) => getOptionValue(opt) === val || opt.id === val
                     );
+                    return found || existing;
                   } catch (error) {
-                    return props.options.find((opt) => opt.id === val);
+                    return serverOptions.value.find((opt) => opt.id === val);
                   }
                 })
                 .filter(Boolean);
             } else if (!props.multiple && currentValue !== null && currentValue !== undefined) {
               try {
-                const option = props.options.find(
+                const existing = selectedOptions.value.find(s => getOptionValue(s) === currentValue);
+                const found = serverOptions.value.find(
                   (opt) => getOptionValue(opt) === currentValue || opt.id === currentValue
                 );
-                selectedOptions.value = option ? [option] : [];
+                selectedOptions.value = (found || existing) ? [found || existing] : [];
               } catch (error) {
-                const option = props.options.find((opt) => opt.id === currentValue);
-                selectedOptions.value = option ? [option] : [];
+                const found = serverOptions.value.find((opt) => opt.id === currentValue);
+                selectedOptions.value = found ? [found] : [];
               }
             }
           } catch (error) {
@@ -288,7 +411,7 @@ watch(
       });
     }
   },
-  { immediate: false }
+  { deep: true }
 );
 
 // Helper functions para extraer valores dinámicamente
@@ -397,28 +520,9 @@ const selectClasses = computed(() => {
   return `${base} ${sizeClass} ${validationClasses.value} ${focus} ${disabled} ${props.class}`;
 });
 
-// Filtered options based on search
+// Filtered options — backend does the filtering, serverOptions IS the filteredOptions
 const filteredOptions = computed(() => {
-  if (
-    !props.searchable ||
-    !searchQuery.value ||
-    searchQuery.value.length < props.minSearchLength
-  ) {
-    return props.options;
-  }
-
-  const query = searchQuery.value.toLowerCase();
-  let filtered = props.options.filter((option) => {
-    const label = getOptionLabel(option).toLowerCase();
-    const description = getOptionDescription(option).toLowerCase();
-    return label.includes(query) || description.includes(query);
-  });
-
-  if (props.searchLimit > 0) {
-    filtered = filtered.slice(0, props.searchLimit);
-  }
-
-  return filtered;
+  return serverOptions.value;
 });
 
 // Display text for selected values
@@ -440,17 +544,23 @@ const displayText = computed(() => {
   return getOptionLabel(selectedOptions.value[0]) || props.placeholder;
 });
 
-// Methods
-const toggleSelect = () => {
+const toggleSelect = async () => {
   if (props.disabled || props.loading) return;
   isOpen.value = !isOpen.value;
-  if (isOpen.value && props.searchable) {
-    nextTick(() => {
-      const searchInput = selectRef.value?.querySelector(
-        'input[type="search"]'
-      );
-      searchInput?.focus();
-    });
+
+  if (isOpen.value) {
+    if (serverOptions.value.length <= (props.initialOptions?.length || 0) && !searchQuery.value && !isFetching.value) {
+      await fetchOptions(1);
+    }
+
+    if (props.searchable) {
+      nextTick(() => {
+        const searchInput = selectRef.value?.querySelector(
+          'input[type="search"]'
+        );
+        searchInput?.focus();
+      });
+    }
   }
 };
 
@@ -499,16 +609,6 @@ const clearSelection = () => {
 
 const isOptionSelected = (option) => {
   return selectedOptions.value.some((opt) => opt.id === option.id);
-};
-
-const handleSearchInput = (event) => {
-  searchQuery.value = event.target.value;
-  emit("search", searchQuery.value);
-};
-
-const clearSearch = () => {
-  searchQuery.value = "";
-  emit("search", "");
 };
 
 // Keyboard navigation
@@ -650,11 +750,11 @@ onMounted(() => {
     <Transition enter-active-class="transition ease-out duration-100" enter-from-class="transform opacity-0 scale-95"
       enter-to-class="transform opacity-100 scale-100" leave-active-class="transition ease-in duration-75"
       leave-from-class="transform opacity-100 scale-100" leave-to-class="transform opacity-0 scale-95">
-      <div v-show="isOpen"
+      <div v-show="isOpen" ref="optionsListRef" @scroll="handleScroll"
         class="absolute z-50 w-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl max-h-60 overflow-auto">
         <!-- Search input -->
         <div v-if="searchable" class="p-2 border-b border-slate-100 dark:border-slate-700/50 relative">
-          <input type="text" v-model="searchQuery" :placeholder="searchPlaceholder" @input="handleSearchInput"
+          <input type="text" :value="searchQuery" :placeholder="searchPlaceholder" @input="handleSearchInput"
             @keydown.enter.prevent
             class="w-full px-3 py-2.5 pr-8 border border-gray-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-0 focus:border-gray-400 dark:bg-slate-700 dark:text-white text-sm transition-colors" />
           <button type="button" v-if="searchQuery" @click.prevent="clearSearch"
@@ -665,8 +765,14 @@ onMounted(() => {
           </button>
         </div>
 
+        <!-- Initial Loader if list is empty -->
+        <div v-if="isFetching && filteredOptions.length === 0" class="px-3 py-6 text-center text-slate-500">
+          <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-current mx-auto mb-2"></div>
+          <span class="text-sm">Buscando...</span>
+        </div>
+
         <!-- Empty option -->
-        <button type="button" v-if="allowEmpty && !multiple" @click="
+        <button type="button" v-if="allowEmpty && !multiple && !isFetching && filteredOptions.length" @click="
           selectOption({ id: '__empty__', value: null, label: 'Ninguno' })
           " class="w-full px-3 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
           <slot name="empty-option">
@@ -736,14 +842,24 @@ onMounted(() => {
           </button>
         </div>
 
+        <!-- Infinite Scroll Mini Loader -->
+        <div v-if="isFetching && filteredOptions.length > 0" class="py-3 text-center border-t border-slate-100 dark:border-slate-700/50">
+          <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-slate-400 mx-auto"></div>
+        </div>
+
+        <!-- End of list marker -->
+        <div v-else-if="!hasMorePages && filteredOptions.length > 0" class="py-2 text-center text-[10px] text-slate-400 uppercase tracking-widest border-t border-slate-100 dark:border-slate-700/50">
+          No hay más opciones
+        </div>
+
         <!-- No options message -->
-        <div v-else-if="searchQuery && filteredOptions.length === 0"
+        <div v-else-if="!isFetching && searchQuery && filteredOptions.length === 0"
           class="px-3 py-4 text-center text-gray-500 dark:text-gray-400 text-sm">
           <slot name="no-options"> No se encontraron opciones </slot>
         </div>
 
         <!-- No data message -->
-        <div v-else-if="!options.length" class="px-3 py-8 text-center">
+        <div v-else-if="!serverOptions.length && !isFetching" class="px-3 py-8 text-center">
           <div class="flex flex-col items-center gap-y-2">
             <div class="size-10 rounded-full bg-slate-50 dark:bg-slate-900/50 flex items-center justify-center">
               <svg class="size-5 text-slate-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
