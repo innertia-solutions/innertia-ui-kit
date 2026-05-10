@@ -1,7 +1,8 @@
 /**
  * Descarga un archivo usando XHR con soporte de progreso.
- * Los headers de autenticación los provee el app consumidor.
+ * Los headers de autenticación se inyectan automáticamente vía useRequestInterceptors.
  */
+// useRequestInterceptors is auto-imported from nuxt-core composables
 export function useDownload() {
   const config = useRuntimeConfig()
   const baseUrl = config.public.apiBaseUrl
@@ -10,14 +11,22 @@ export function useDownload() {
    * @param {string} url - ruta relativa al baseUrl
    * @param {object} params - query params (GET) o body (POST)
    * @param {object} options - { onProgress, method, headers }
+   *   `headers` es mezclado DESPUÉS de que corran los interceptores (el caller puede sobreescribir)
    * @returns {Promise<{ blob: Blob, headers: object }>}
    */
   function download(url, params = {}, options = {}) {
     const {
       onProgress = null,
       method = 'GET',
-      headers = {},
+      headers: extraHeaders = {},
     } = options
+
+    // Run all interceptors (auth token, X-Tenant-Id, etc.)
+    const { run } = useRequestInterceptors()
+    const headers = {}
+    run(headers, options)
+    // Merge caller-supplied headers last (allow override)
+    Object.assign(headers, extraHeaders)
 
     return new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest()
