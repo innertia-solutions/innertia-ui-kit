@@ -46,8 +46,9 @@ const globalTimeStore = (() => {
  * Composable para manejo de fechas y tiempos relativos
  */
 export const useDate = () => {
-  // Configuración base de la zona horaria del tenant
-  const tenantTimeZone = 'America/Santiago';
+  // Zona horaria: configurable via runtimeConfig.public.timeZone, fallback Santiago
+  const config = useRuntimeConfig()
+  const tenantTimeZone = config.public?.timeZone || 'America/Santiago';
 
   // Suscribirse al timer global cuando se monta el componente
   onMounted(() => {

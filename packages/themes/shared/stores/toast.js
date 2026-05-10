@@ -22,7 +22,7 @@ export const useToastStore = defineStore('toast', {
             'bottom-center': [],
             'bottom-right': [],
         },
-        timeouts: new Map(), // Para trackear los timeouts activos
+        timeouts: {}, // id → timeoutId (plain object, JSON-safe)
     }),
     actions: {
         success(config) {
@@ -87,10 +87,9 @@ export const useToastStore = defineStore('toast', {
             }
         },
         remove(id) {
-            // Limpiar timeout si existe
-            if (this.timeouts.has(id)) {
-                clearTimeout(this.timeouts.get(id))
-                this.timeouts.delete(id)
+            if (this.timeouts[id] !== undefined) {
+                clearTimeout(this.timeouts[id])
+                delete this.timeouts[id]
             }
 
             for (const key in this.toasts) {
@@ -98,13 +97,12 @@ export const useToastStore = defineStore('toast', {
             }
         },
         _scheduleRemoval(toast) {
-            // Solo programar auto-remove si duration > 0
             if (toast.duration && toast.duration > 0) {
                 const timeoutId = setTimeout(() => {
                     this.remove(toast.id)
                 }, toast.duration)
 
-                this.timeouts.set(toast.id, timeoutId)
+                this.timeouts[toast.id] = timeoutId
             }
         },
 

@@ -40,13 +40,13 @@ export function useForm(formDefinition, options = {}) {
   const errors = reactive({})
 
   for (const field in formDefinition) {
-    form[field] = formDefinition[field]?.value ?? ''
+    form[field] = formDefinition[field]?.value !== undefined ? formDefinition[field].value : ''
     errors[field] = []
   }
 
   const reset = () => {
     for (const field in formDefinition) {
-      form[field] = formDefinition[field]?.value ?? ''
+      form[field] = formDefinition[field]?.value !== undefined ? formDefinition[field].value : ''
       errors[field] = []
     }
   }

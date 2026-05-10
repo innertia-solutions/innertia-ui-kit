@@ -1,7 +1,17 @@
-// composables/useTimeAgo.ts
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, isRef, onMounted, onBeforeUnmount } from 'vue'
 import dayjs from 'dayjs'
+import utc from 'dayjs/plugin/utc'
+import relativeTime from 'dayjs/plugin/relativeTime'
+import 'dayjs/locale/es'
 
+dayjs.extend(utc)
+dayjs.extend(relativeTime)
+dayjs.locale('es')
+
+/**
+ * Returns a reactive `timeAgo()` that updates every 60s.
+ * @param {string | Ref<string>} utcDatetime - UTC datetime string or a ref to one
+ */
 export const useTimeAgo = (utcDatetime) => {
     const now = ref(new Date())
     let interval
@@ -17,8 +27,10 @@ export const useTimeAgo = (utcDatetime) => {
     })
 
     const timeAgo = () => {
-        // Convertir desde UTC a la hora local del navegador
-        return dayjs.utc(utcDatetime).local().from(now.value)
+        const value = isRef(utcDatetime) ? utcDatetime.value : utcDatetime
+        if (!value) return ''
+        // Force UTC parse then compare to local now
+        return dayjs.utc(value).local().from(now.value)
     }
 
     return { timeAgo }

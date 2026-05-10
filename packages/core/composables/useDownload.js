@@ -25,7 +25,8 @@ export function useDownload() {
       if (method === 'GET' && Object.keys(params).length) {
         query = '?' + new URLSearchParams(params).toString()
       }
-      xhr.open(method, `${baseUrl}/${url}${query}`)
+      const cleanUrl = url.startsWith('/') ? url.slice(1) : url
+      xhr.open(method, `${baseUrl}/${cleanUrl}${query}`)
       Object.entries(headers).forEach(([k, v]) => xhr.setRequestHeader(k, v))
       xhr.responseType = 'blob'
       xhr.onload = function () {

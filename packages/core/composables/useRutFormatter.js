@@ -1,20 +1,39 @@
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 
-export const useRutFormatter = (inputElement) => {
-    const formatRut = (rut) => {
-        const cleanRut = rut.replace(/[^\dKk]/g, '').toUpperCase(); // Limpiar caracteres no numéricos
+const formatRut = (rut) => {
+    const clean = rut.replace(/[^\dKk]/g, '').toUpperCase()
+    if (clean.length <= 1) return clean
+    const body = clean.slice(0, -1)
+    const dv = clean.slice(-1)
+    const formatted = body.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
+    return `${formatted}-${dv}`
+}
 
-        if (cleanRut.length <= 1) return cleanRut; // Si solo hay un dígito, no hacer formato
+/**
+ * Attaches RUT auto-formatting to an input element ref.
+ * Cleans up the listener on unmount.
+ *
+ * @param {Ref<HTMLInputElement | null>} inputRef - template ref to the input
+ * @returns {{ formattedRut: Ref<string> }}
+ */
+export const useRutFormatter = (inputRef) => {
+    const formattedRut = ref('')
 
-        const rutBody = cleanRut.slice(0, -1); // Cuerpo del RUT
-        const dv = cleanRut.slice(-1); // Dígito verificador
+    const handler = (e) => {
+        const value = formatRut(e.target.value)
+        e.target.value = value
+        formattedRut.value = value
+    }
 
-        const formattedRut = rutBody.replace(/\B(?=(\d{3})+(?!\d))/g, '.'); // Formatear cuerpo
+    onMounted(() => {
+        const el = inputRef?.value ?? inputRef
+        if (el) el.addEventListener('input', handler)
+    })
 
-        return `${formattedRut}-${dv}`; // Retornar RUT formateado
-    };
+    onBeforeUnmount(() => {
+        const el = inputRef?.value ?? inputRef
+        if (el) el.removeEventListener('input', handler)
+    })
 
-    inputElement.addEventListener('input', (e) => {
-        let formattedRut = formatRut(e.target.value);
-        e.target.value = formattedRut;
-    });
-};
+    return { formattedRut }
+}

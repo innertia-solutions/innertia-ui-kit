@@ -49,6 +49,7 @@ export function useRealtime() {
       error.value = err
       connected.value = false
       alreadyConnected = false
+      pusher.value = null // allow reconnect after error
       console.error('[nuxt-core] Realtime error:', err)
     })
 
