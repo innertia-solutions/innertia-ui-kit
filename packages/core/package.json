@@ -1,0 +1,38 @@
+{
+  "name": "@innertia-solutions/nuxt-core",
+  "version": "0.1.0",
+  "description": "Innertia Solutions — Nuxt core layer: plugins, composables and base config",
+  "keywords": ["nuxt", "vue", "preline", "pinia", "pusher", "composables"],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/innertia-solutions/innertia-nuxt"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "./nuxt.config.ts",
+  "exports": {
+    ".": "./nuxt.config.ts"
+  },
+  "peerDependencies": {
+    "nuxt": ">=4.0.0",
+    "vue": ">=3.5.0"
+  },
+  "dependencies": {
+    "preline": "^3.2.3",
+    "@pinia/nuxt": "^0.11.3",
+    "pinia": "^3.0.4",
+    "pinia-plugin-persistedstate": "^4.7.1",
+    "pusher-js": "^8.5.0",
+    "uuid": "^13.0.0",
+    "date-fns": "^4.1.0",
+    "date-fns-tz": "^3.2.0",
+    "dayjs": "^1.11.0",
+    "@nuxtjs/seo": "^3.4.0"
+  },
+  "devDependencies": {
+    "nuxt": "^4.4.2",
+    "vue": "^3.5.0"
+  }
+}
