@@ -1,5 +1,6 @@
 import Pusher from 'pusher-js'
 import { ref, readonly } from 'vue'
+// useRequestInterceptors is auto-imported from this same package (nuxt-core)
 
 const pusher = ref(null)
 const connected = ref(false)
@@ -25,10 +26,18 @@ export function useRealtime() {
       return
     }
 
+    // Build auth headers from all registered interceptors (auth token, X-Tenant-Id, etc.)
+    const { run } = useRequestInterceptors()
+    const authHeaders = {}
+    run(authHeaders)
+
     const options = {
       cluster: pusherAppCluster || 'mt1',
       forceTLS: true,
       enabledTransports: ['ws', 'wss'],
+      auth: {
+        headers: authHeaders,
+      },
     }
 
     // Socketi / host personalizado
