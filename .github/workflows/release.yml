@@ -3,10 +3,22 @@ name: Release
 on:
   workflow_dispatch:
     inputs:
-      packages:
-        description: 'Packages to publish (comma-separated: core,app,saas,themes) or "all"'
-        required: true
-        default: 'all'
+      core:
+        description: 'nuxt-core'
+        type: boolean
+        default: false
+      app:
+        description: 'nuxt-app'
+        type: boolean
+        default: false
+      saas:
+        description: 'nuxt-saas'
+        type: boolean
+        default: false
+      themes:
+        description: 'nuxt-themes'
+        type: boolean
+        default: false
       bump:
         description: 'Version bump'
         required: true
@@ -50,24 +62,20 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          INPUT="${{ inputs.packages }}"
-          if [ "$INPUT" = "all" ]; then
-            PACKAGES=(core app saas themes)
-          else
-            IFS=',' read -ra PACKAGES <<< "$INPUT"
-          fi
-
           BUMPED_FILES=""
           RELEASE_NOTES=""
 
-          for pkg in "${PACKAGES[@]}"; do
-            pkg=$(echo "$pkg" | tr -d ' ')
-            DIR="packages/$pkg"
+          for pkg in core app saas themes; do
+            # Read the matching boolean input
+            INPUT_VAR="${pkg}"
+            ENABLED="${{ inputs.core }}"
+            [ "$pkg" = "app" ]    && ENABLED="${{ inputs.app }}"
+            [ "$pkg" = "saas" ]   && ENABLED="${{ inputs.saas }}"
+            [ "$pkg" = "themes" ] && ENABLED="${{ inputs.themes }}"
 
-            if [ ! -f "$DIR/package.json" ]; then
-              echo "Package $pkg not found — skipping"
-              continue
-            fi
+            [ "$ENABLED" != "true" ] && continue
+
+            DIR="packages/$pkg"
 
             echo "Publishing $DIR"
             cd "$DIR"
