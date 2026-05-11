@@ -8,8 +8,6 @@ on:
       - 'packages/app/**'
       - 'packages/saas/**'
       - 'packages/themes/**'
-      - 'packages/theme/**'
-      - 'packages/ui/**'
 
 jobs:
   publish:
@@ -48,7 +46,7 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          PACKAGES=(core app saas themes theme ui)
+          PACKAGES=(core app saas themes)
           BUMPED_FILES=""
           RELEASE_NOTES=""
 

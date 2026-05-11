@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       packages:
-        description: 'Packages to publish (comma-separated: core,app,saas,themes,theme,ui) or "all"'
+        description: 'Packages to publish (comma-separated: core,app,saas,themes) or "all"'
         required: true
         default: 'all'
       bump:
@@ -52,7 +52,7 @@ jobs:
         run: |
           INPUT="${{ inputs.packages }}"
           if [ "$INPUT" = "all" ]; then
-            PACKAGES=(core app saas themes theme ui)
+            PACKAGES=(core app saas themes)
           else
             IFS=',' read -ra PACKAGES <<< "$INPUT"
           fi
