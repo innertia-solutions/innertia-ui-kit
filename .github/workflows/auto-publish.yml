@@ -83,6 +83,7 @@ jobs:
       - name: Commit version bumps
         if: steps.publish.outputs.bumped_files != ''
         run: |
-          git add ${{ steps.publish.outputs.bumped_files }}
+          pnpm install --no-frozen-lockfile
+          git add ${{ steps.publish.outputs.bumped_files }} pnpm-lock.yaml
           git commit -m "chore: release${{ steps.publish.outputs.release_notes }}"
           git push
