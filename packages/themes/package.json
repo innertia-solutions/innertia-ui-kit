@@ -6,7 +6,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/innertia-solutions/innertia-nuxt"
+    "url": "https://github.com/innertia-solutions/innertia-ui-kit"
   },
   "publishConfig": {
     "access": "public"
