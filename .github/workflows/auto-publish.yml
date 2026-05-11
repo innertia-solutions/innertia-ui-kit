@@ -1,0 +1,88 @@
+name: Auto Publish
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/core/**'
+      - 'packages/app/**'
+      - 'packages/saas/**'
+      - 'packages/themes/**'
+      - 'packages/theme/**'
+      - 'packages/ui/**'
+
+jobs:
+  publish:
+    # Prevent infinite loop when the bot pushes version bump commits
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    environment: NPM
+    permissions:
+      contents: write
+      id-token: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: 'https://registry.npmjs.org'
+
+      - run: pnpm install
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Publish changed packages
+        id: publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          PACKAGES=(core app saas themes theme ui)
+          BUMPED_FILES=""
+          RELEASE_NOTES=""
+
+          for pkg in "${PACKAGES[@]}"; do
+            DIR="packages/$pkg"
+
+            # Skip if no changes in this package between before and after the push
+            if ! git diff --name-only ${{ github.event.before }} ${{ github.event.after }} -- "$DIR" | grep -q .; then
+              echo "No changes in $DIR — skipping"
+              continue
+            fi
+
+            echo "Changes detected in $DIR — publishing"
+            cd "$DIR"
+
+            npm version patch --no-git-tag-version
+            npm publish --access public --provenance
+
+            PKG_NAME=$(node -p "require('./package.json').name")
+            VERSION=$(node -p "require('./package.json').version")
+            echo "✓ $PKG_NAME@$VERSION"
+
+            BUMPED_FILES="$BUMPED_FILES $DIR/package.json"
+            RELEASE_NOTES="$RELEASE_NOTES $PKG_NAME@$VERSION"
+
+            cd -
+          done
+
+          echo "bumped_files=$BUMPED_FILES" >> $GITHUB_OUTPUT
+          echo "release_notes=$RELEASE_NOTES" >> $GITHUB_OUTPUT
+
+      - name: Commit version bumps
+        if: steps.publish.outputs.bumped_files != ''
+        run: |
+          git add ${{ steps.publish.outputs.bumped_files }}
+          git commit -m "chore: release${{ steps.publish.outputs.release_notes }}"
+          git push
