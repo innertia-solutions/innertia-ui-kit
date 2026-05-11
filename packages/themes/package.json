@@ -1,8 +1,15 @@
 {
   "name": "@innertia-solutions/nuxt-themes",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Innertia Solutions — Nuxt themes layer: Vantage components, layouts and shared composables",
-  "keywords": ["nuxt", "vue", "tailwind", "preline", "theme", "vantage"],
+  "keywords": [
+    "nuxt",
+    "vue",
+    "tailwind",
+    "preline",
+    "theme",
+    "vantage"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",

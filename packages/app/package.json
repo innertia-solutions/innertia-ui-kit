@@ -1,8 +1,15 @@
 {
   "name": "@innertia-solutions/nuxt-app",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Innertia Solutions — Nuxt app layer: auth, context, permissions, API client",
-  "keywords": ["nuxt", "vue", "pinia", "auth", "permissions", "context"],
+  "keywords": [
+    "nuxt",
+    "vue",
+    "pinia",
+    "auth",
+    "permissions",
+    "context"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",
