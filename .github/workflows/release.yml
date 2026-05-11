@@ -3,14 +3,10 @@ name: Release
 on:
   workflow_dispatch:
     inputs:
-      package:
-        description: 'Package to publish'
+      packages:
+        description: 'Packages to publish (comma-separated: core,app,saas,themes,theme,ui) or "all"'
         required: true
-        type: choice
-        options:
-          - ui
-          - theme
-          - both
+        default: 'all'
       bump:
         description: 'Version bump'
         required: true
@@ -26,7 +22,7 @@ jobs:
     environment: NPM
     permissions:
       contents: write
-      id-token: write  # Required for OIDC Trusted Publishing
+      id-token: write
 
     steps:
       - uses: actions/checkout@v4
@@ -42,44 +38,60 @@ jobs:
           node-version: 20
           registry-url: 'https://registry.npmjs.org'
 
-      - run: pnpm install
+      - run: pnpm install --no-frozen-lockfile
 
       - name: Configure git
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Release ui
-        if: ${{ inputs.package == 'ui' || inputs.package == 'both' }}
-        working-directory: packages/ui
-        run: |
-          npm version ${{ inputs.bump }} --no-git-tag-version
-          npm publish --access public --provenance
-          echo "UI_VERSION=$(node -p "require('./package.json').version")" >> $GITHUB_ENV
+      - name: Publish packages
+        id: publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Release theme
-        if: ${{ inputs.package == 'theme' || inputs.package == 'both' }}
-        working-directory: packages/theme
         run: |
-          npm version ${{ inputs.bump }} --no-git-tag-version
-          npm publish --access public --provenance
-          echo "THEME_VERSION=$(node -p "require('./package.json').version")" >> $GITHUB_ENV
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-      - name: Commit and push version bump
-        run: |
-          git add packages/ui/package.json packages/theme/package.json
-
-          if [ "${{ inputs.package }}" = "both" ]; then
-            MSG="chore: release ui@${{ env.UI_VERSION }} theme@${{ env.THEME_VERSION }}"
-          elif [ "${{ inputs.package }}" = "ui" ]; then
-            MSG="chore: release ui@${{ env.UI_VERSION }}"
+          INPUT="${{ inputs.packages }}"
+          if [ "$INPUT" = "all" ]; then
+            PACKAGES=(core app saas themes theme ui)
           else
-            MSG="chore: release theme@${{ env.THEME_VERSION }}"
+            IFS=',' read -ra PACKAGES <<< "$INPUT"
           fi
 
-          git commit -m "$MSG"
+          BUMPED_FILES=""
+          RELEASE_NOTES=""
+
+          for pkg in "${PACKAGES[@]}"; do
+            pkg=$(echo "$pkg" | tr -d ' ')
+            DIR="packages/$pkg"
+
+            if [ ! -f "$DIR/package.json" ]; then
+              echo "Package $pkg not found — skipping"
+              continue
+            fi
+
+            echo "Publishing $DIR"
+            cd "$DIR"
+
+            npm version ${{ inputs.bump }} --no-git-tag-version
+            npm publish --access public --provenance
+
+            PKG_NAME=$(node -p "require('./package.json').name")
+            VERSION=$(node -p "require('./package.json').version")
+            echo "✓ $PKG_NAME@$VERSION"
+
+            BUMPED_FILES="$BUMPED_FILES $DIR/package.json"
+            RELEASE_NOTES="$RELEASE_NOTES $PKG_NAME@$VERSION"
+
+            cd -
+          done
+
+          echo "bumped_files=$BUMPED_FILES" >> $GITHUB_OUTPUT
+          echo "release_notes=$RELEASE_NOTES" >> $GITHUB_OUTPUT
+
+      - name: Commit and push version bumps
+        if: steps.publish.outputs.bumped_files != ''
+        run: |
+          pnpm install --no-frozen-lockfile
+          git add ${{ steps.publish.outputs.bumped_files }} pnpm-lock.yaml
+          git commit -m "chore: release${{ steps.publish.outputs.release_notes }}"
           git push
