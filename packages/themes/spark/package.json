@@ -1,8 +1,15 @@
 {
   "name": "@innertia-solutions/spark",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Innertia Solutions — Spark theme: backoffice, landing and mobile components and layouts",
-  "keywords": ["nuxt", "vue", "theme", "spark", "backoffice", "landing"],
+  "keywords": [
+    "nuxt",
+    "vue",
+    "theme",
+    "spark",
+    "backoffice",
+    "landing"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",
