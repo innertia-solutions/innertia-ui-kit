@@ -1,0 +1,29 @@
+{
+  "name": "@innertia-solutions/spark",
+  "version": "0.1.0",
+  "description": "Innertia Solutions — Spark theme: backoffice, landing and mobile components and layouts",
+  "keywords": ["nuxt", "vue", "theme", "spark", "backoffice", "landing"],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/innertia-solutions/innertia-ui-kit"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "./nuxt.config.ts",
+  "exports": {
+    ".": "./nuxt.config.ts"
+  },
+  "peerDependencies": {
+    "nuxt": ">=4.0.0",
+    "vue": ">=3.5.0"
+  },
+  "dependencies": {
+    "@innertia-solutions/nuxt-core": "^0.1.4"
+  },
+  "devDependencies": {
+    "nuxt": "^4.4.2",
+    "vue": "^3.5.0"
+  }
+}

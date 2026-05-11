@@ -1,12 +1,16 @@
 // useTenantStore, useApi auto-imported.
-// Server-only: valida el slug del tenant con el backend.
+// Server-only: valida el slug del tenant con el backend (timeout 5s).
 export default defineNuxtRouteMiddleware(async (to) => {
   if (!import.meta.server) return
 
+  // En local no hay backend de tenant — skip completo
+  const config = useRuntimeConfig()
+  if (config.public.appEnv === 'local') return
+
   // Rutas públicas que no requieren tenant válido
-  const publicRoutes = ['/welcome', '/tenant-not-found', '/404']
+  const publicRoutes = ['/tenant-error', '/404']
   const isPublic =
-    publicRoutes.includes(to.path) ||
+    publicRoutes.some(r => to.path.startsWith(r)) ||
     to.path.startsWith('/auth/')
 
   if (isPublic) return
@@ -15,19 +19,27 @@ export default defineNuxtRouteMiddleware(async (to) => {
   if (useState('isAdminContext', () => false).value) return
 
   const tenantSlug = useState<string>('tenantSlug', () => '').value
-  if (!tenantSlug) return navigateTo('/welcome')
+  if (!tenantSlug) return navigateTo('/tenant-error?reason=no-subdomain')
+
+  const timeout = new Promise<never>((_, reject) =>
+    setTimeout(() => reject(new Error('timeout')), 5000)
+  )
 
   try {
     const api = useApi()
-    const data = await api.get(`tenant/validate?slug=${tenantSlug}`, { useToken: false })
+    const data = await Promise.race([
+      api.get(`tenant/validate?slug=${tenantSlug}`, { useToken: false }),
+      timeout,
+    ])
 
     if (!data || !data.isActive) {
-      return navigateTo('/tenant-not-found')
+      return navigateTo('/tenant-error?reason=inactive')
     }
 
     const tenantStore = useTenantStore()
     tenantStore.setTenant(data.id, data.config ?? {})
-  } catch {
-    return navigateTo('/tenant-not-found')
+  } catch (e: any) {
+    const reason = e?.message === 'timeout' ? 'timeout' : 'unreachable'
+    return navigateTo(`/tenant-error?reason=${reason}`)
   }
 })

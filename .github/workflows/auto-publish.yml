@@ -7,11 +7,10 @@ on:
       - 'packages/core/**'
       - 'packages/app/**'
       - 'packages/saas/**'
-      - 'packages/themes/**'
+      - 'packages/themes/spark/**'
 
 jobs:
   publish:
-    # Prevent infinite loop when the bot pushes version bump commits
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     environment: NPM
@@ -46,14 +45,19 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          PACKAGES=(core app saas themes)
+          declare -A DIRS=(
+            [core]="packages/core"
+            [app]="packages/app"
+            [saas]="packages/saas"
+            [spark]="packages/themes/spark"
+          )
+
           BUMPED_FILES=""
           RELEASE_NOTES=""
 
-          for pkg in "${PACKAGES[@]}"; do
-            DIR="packages/$pkg"
+          for pkg in core app saas spark; do
+            DIR="${DIRS[$pkg]}"
 
-            # Skip if no changes in this package between before and after the push
             if ! git diff --name-only ${{ github.event.before }} ${{ github.event.after }} -- "$DIR" | grep -q .; then
               echo "No changes in $DIR — skipping"
               continue

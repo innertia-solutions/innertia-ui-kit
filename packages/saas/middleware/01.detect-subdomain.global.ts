@@ -3,10 +3,19 @@
 export default defineNuxtRouteMiddleware(() => {
   if (!import.meta.server) return
 
+  const config = useRuntimeConfig()
   const requestUrl = useRequestURL()
   const hostname = requestUrl.hostname // ej. "acme.app.com" o "localhost"
 
   const parts = hostname.split('.')
+
+  // En local no hay subdominio real — usar slug "local" para no bloquear el dev
+  if (config.public.appEnv === 'local') {
+    useState<string>('tenantSlug', () => '').value = 'local'
+    const tenantStore = useTenantStore()
+    tenantStore.setSlug('local')
+    return
+  }
 
   // Hostname bare (localhost, IP) o www → sin tenant
   if (
@@ -14,7 +23,7 @@ export default defineNuxtRouteMiddleware(() => {
     parts[0] === 'www' ||
     /^\d+$/.test(parts[0]) // fragmento de IP
   ) {
-    return navigateTo('/welcome')
+    return navigateTo('/tenant-error?reason=no-subdomain')
   }
 
   const subdomain = parts[0]

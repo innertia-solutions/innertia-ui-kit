@@ -15,8 +15,8 @@ on:
         description: 'nuxt-saas'
         type: boolean
         default: false
-      themes:
-        description: 'nuxt-themes'
+      spark:
+        description: 'spark'
         type: boolean
         default: false
       bump:
@@ -65,18 +65,23 @@ jobs:
           BUMPED_FILES=""
           RELEASE_NOTES=""
 
-          for pkg in core app saas themes; do
-            # Read the matching boolean input
-            INPUT_VAR="${pkg}"
-            ENABLED="${{ inputs.core }}"
-            [ "$pkg" = "app" ]    && ENABLED="${{ inputs.app }}"
-            [ "$pkg" = "saas" ]   && ENABLED="${{ inputs.saas }}"
-            [ "$pkg" = "themes" ] && ENABLED="${{ inputs.themes }}"
+          declare -A DIRS=(
+            [core]="packages/core"
+            [app]="packages/app"
+            [saas]="packages/saas"
+            [spark]="packages/themes/spark"
+          )
+
+          for pkg in core app saas spark; do
+            ENABLED="false"
+            [ "$pkg" = "core" ]  && ENABLED="${{ inputs.core }}"
+            [ "$pkg" = "app" ]   && ENABLED="${{ inputs.app }}"
+            [ "$pkg" = "saas" ]  && ENABLED="${{ inputs.saas }}"
+            [ "$pkg" = "spark" ] && ENABLED="${{ inputs.spark }}"
 
             [ "$ENABLED" != "true" ] && continue
 
-            DIR="packages/$pkg"
-
+            DIR="${DIRS[$pkg]}"
             echo "Publishing $DIR"
             cd "$DIR"
 
