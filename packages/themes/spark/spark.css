@@ -3,6 +3,11 @@
 @plugin "@tailwindcss/forms";
 @plugin "@tailwindcss/aspect-ratio";
 
+/* Escanear componentes del paquete spark (en node_modules) */
+@source "./components/**/*.vue";
+@source "./shared/**/*.{js,ts}";
+@source "./plugins/**/*.{js,ts}";
+
 @custom-variant dark (&:where(.dark, .dark *));
 @custom-variant hover (&:hover);
 
