@@ -5,7 +5,6 @@
   "keywords": [
     "nuxt",
     "vue",
-    "preline",
     "pinia",
     "pusher",
     "composables"
@@ -30,7 +29,6 @@
     "pinia-plugin-persistedstate": ">=4.0.0"
   },
   "dependencies": {
-    "preline": "^3.2.3",
     "pusher-js": "^8.5.0",
     "uuid": "^13.0.0",
     "date-fns": "^4.1.0",
