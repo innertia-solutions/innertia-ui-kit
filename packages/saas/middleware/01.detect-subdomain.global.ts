@@ -9,20 +9,21 @@ export default defineNuxtRouteMiddleware(() => {
 
   const parts = hostname.split('.')
 
-  // En local no hay subdominio real — usar slug "local" para no bloquear el dev
-  if (config.public.appEnv === 'local') {
-    useState<string>('tenantSlug', () => '').value = 'local'
-    const tenantStore = useTenantStore()
-    tenantStore.setSlug('local')
-    return
+  // Hostname bare (localhost, IP) sin subdominio → usar slug "local" en dev, error en prod
+  const isBareLocalhost = hostname === 'localhost' || /^\d+(\.\d+){3}$/.test(hostname)
+
+  if (isBareLocalhost) {
+    if (config.public.appEnv === 'local') {
+      useState<string>('tenantSlug', () => '').value = 'local'
+      const tenantStore = useTenantStore()
+      tenantStore.setSlug('local')
+      return
+    }
+    return navigateTo('/tenant-error?reason=no-subdomain')
   }
 
-  // Hostname bare (localhost, IP) o www → sin tenant
-  if (
-    parts.length < 2 ||
-    parts[0] === 'www' ||
-    /^\d+$/.test(parts[0]) // fragmento de IP
-  ) {
+  // Hostname bare sin subdominio (ej. "tudominio.com") → sin tenant
+  if (parts.length < 2 || parts[0] === 'www' || /^\d+$/.test(parts[0])) {
     return navigateTo('/tenant-error?reason=no-subdomain')
   }
 
