@@ -27,7 +27,10 @@
     "vue": ">=3.5.0"
   },
   "dependencies": {
-    "@innertia-solutions/nuxt-core": "^0.1.4"
+    "@innertia-solutions/nuxt-core": "^0.1.4",
+    "@tabler/icons-vue": "^3.44.0",
+    "vanilla-calendar-pro": "^3.1.0",
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
     "nuxt": "^4.4.2",
