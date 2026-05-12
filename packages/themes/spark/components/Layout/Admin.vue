@@ -17,7 +17,7 @@ onMounted(() => {
       <template #user-footer><slot name="user-footer" /></template>
 
       <AdminPage>
-        <NuxtPage />
+        <slot />
       </AdminPage>
     </AdminBase>
   </div>

@@ -18,9 +18,7 @@
           <div class="flex justify-center mb-6">
             <slot name="logo" />
           </div>
-          <Transition name="auth-content" mode="out-in">
-            <NuxtPage />
-          </Transition>
+          <slot />
           <div class="absolute bottom-4 right-4 text-xs text-slate-400">
             <slot name="version" />
           </div>
