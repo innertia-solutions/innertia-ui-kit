@@ -12,7 +12,7 @@ export function useAuth() {
    */
   async function performLogin(context, email, password, remember = false) {
     authStore.rememberUser = remember
-    const data = await api.post(`${context}/auth/login`, { email, password })
+    const data = await api.post(`${context}/auth/login`, { email, password, app: context })
     authStore.saveToken(data.access_token)
     authStore.setCurrentContext(context)
     await fetchMe()
