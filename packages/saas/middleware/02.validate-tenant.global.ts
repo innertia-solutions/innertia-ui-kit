@@ -4,7 +4,6 @@ export default defineNuxtRouteMiddleware(async (to) => {
   if (!import.meta.server) return
 
   const config = useRuntimeConfig()
-  const tenantSlugEarly = useState<string>('tenantSlug', () => '').value
 
   // Rutas públicas que no requieren tenant válido
   const publicRoutes = ['/tenant-error', '/404']
@@ -18,7 +17,13 @@ export default defineNuxtRouteMiddleware(async (to) => {
   if (useState('isAdminContext', () => false).value) return
 
   const tenantSlug = useState<string>('tenantSlug', () => '').value
-  if (!tenantSlug) return navigateTo('/tenant-error?reason=no-subdomain')
+
+  console.log(`[tenant:validate] path=${to.path} slug="${tenantSlug}"`)
+
+  if (!tenantSlug) {
+    console.warn('[tenant:validate] sin slug → /tenant-error?reason=no-subdomain')
+    return navigateTo('/tenant-error?reason=no-subdomain')
+  }
 
   const timeout = new Promise<never>((_, reject) =>
     setTimeout(() => reject(new Error('timeout')), 5000)
@@ -26,19 +31,27 @@ export default defineNuxtRouteMiddleware(async (to) => {
 
   try {
     const api = useApi()
+    const url = `tenant/validate?slug=${tenantSlug}`
+    console.log(`[tenant:validate] GET ${url}`)
+
     const data = await Promise.race([
-      api.get(`tenant/validate?slug=${tenantSlug}`, { useToken: false }),
+      api.get(url, { useToken: false }),
       timeout,
     ])
 
+    console.log(`[tenant:validate] respuesta:`, JSON.stringify(data))
+
     if (!data || !data.isActive) {
+      console.warn(`[tenant:validate] tenant inactivo o no encontrado → inactive`)
       return navigateTo('/tenant-error?reason=inactive')
     }
 
     const tenantStore = useTenantStore()
     tenantStore.setTenant(data.id, data.config ?? {})
+    console.log(`[tenant:validate] OK — tenant id=${data.id}`)
   } catch (e: any) {
     const reason = e?.message === 'timeout' ? 'timeout' : 'unreachable'
+    console.error(`[tenant:validate] error → ${reason}`, e?.message)
     return navigateTo(`/tenant-error?reason=${reason}`)
   }
 })
