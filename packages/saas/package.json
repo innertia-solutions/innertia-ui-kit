@@ -1,6 +1,6 @@
 {
   "name": "@innertia-solutions/nuxt-saas",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "description": "Innertia Solutions — Nuxt SaaS layer: multi-tenant identification, config, and interceptor",
   "keywords": [
     "nuxt",
