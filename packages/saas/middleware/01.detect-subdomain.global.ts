@@ -1,6 +1,9 @@
 // useTenantStore auto-imported from saas stores.
 // Server-only: lee el hostname de la request para extraer el subdomain del tenant.
-export default defineNuxtRouteMiddleware(() => {
+export default defineNuxtRouteMiddleware((to) => {
+  // Evitar loop infinito: si ya estamos en la página de error de tenant, no redirigir de nuevo.
+  if (to.path === '/tenant-error') return
+
   if (!import.meta.server) return
 
   const config = useRuntimeConfig()
