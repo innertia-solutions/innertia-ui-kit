@@ -1,6 +1,6 @@
 {
   "name": "@innertia-solutions/nuxt-app",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "Innertia Solutions — Nuxt app layer: auth, context, permissions, API client",
   "keywords": [
     "nuxt",
@@ -27,7 +27,8 @@
     "vue": ">=3.5.0"
   },
   "dependencies": {
-    "@innertia-solutions/nuxt-core": "^0.1.3"
+    "@innertia-solutions/nuxt-core": "^0.1.3",
+    "@tanstack/vue-query": "^5.100.10"
   },
   "devDependencies": {
     "nuxt": "^4.4.2",
