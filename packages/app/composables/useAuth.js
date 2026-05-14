@@ -13,7 +13,7 @@ export function useAuth() {
   async function performLogin(context, email, password, remember = false) {
     authStore.rememberUser = remember
     const data = await api.post(`${context}/auth/login`, { email, password, app: context })
-    authStore.saveToken(data.access_token)
+    authStore.saveToken(data.token ?? data.access_token)
     authStore.setCurrentContext(context)
     await fetchMe()
     return data
@@ -59,7 +59,7 @@ export function useAuth() {
    */
   async function handleOauthCallback(context, provider, code) {
     const data = await api.post(`${context}/auth/oauth/${provider}/callback`, { code })
-    authStore.saveToken(data.access_token)
+    authStore.saveToken(data.token ?? data.access_token)
     authStore.setCurrentContext(context)
     await fetchMe()
     return data
