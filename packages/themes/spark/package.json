@@ -1,6 +1,7 @@
 {
   "name": "@innertia-solutions/nuxt-theme-spark",
-  "version": "0.1.15",
+
+  "version": "0.1.16",
   "description": "Innertia Solutions — Spark theme: backoffice, landing and mobile components and layouts",
   "keywords": [
     "nuxt",
@@ -30,13 +31,14 @@
   "dependencies": {
     "@innertia-solutions/nuxt-core": "^0.1.4",
     "@tabler/icons-vue": "^3.44.0",
-    "preline": "^3.2.3",
     "@tailwindcss/aspect-ratio": "^0.4.2",
     "@tailwindcss/forms": "^0.5.10",
     "@tailwindcss/vite": "^4.0.0",
+    "@tanstack/vue-table": "^8.21.3",
+    "preline": "^3.2.3",
     "tailwindcss": "^4.0.0",
-    "vanilla-calendar-pro": "^3.1.0",
-    "uuid": "^13.0.0"
+    "uuid": "^13.0.0",
+    "vanilla-calendar-pro": "^3.1.0"
   },
   "devDependencies": {
     "nuxt": "^4.4.2",
