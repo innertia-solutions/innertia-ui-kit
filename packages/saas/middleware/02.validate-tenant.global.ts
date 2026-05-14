@@ -3,10 +3,8 @@
 export default defineNuxtRouteMiddleware(async (to) => {
   if (!import.meta.server) return
 
-  // En local puro (slug 'local' = localhost sin subdominio) no validar
   const config = useRuntimeConfig()
   const tenantSlugEarly = useState<string>('tenantSlug', () => '').value
-  if (config.public.appEnv === 'local' && tenantSlugEarly === 'local') return
 
   // Rutas públicas que no requieren tenant válido
   const publicRoutes = ['/tenant-error', '/404']

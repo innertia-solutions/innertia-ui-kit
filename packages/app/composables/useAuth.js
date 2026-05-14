@@ -25,7 +25,8 @@ export function useAuth() {
    */
   async function fetchMe() {
     const data = await api.get('auth/me')
-    authStore.saveUser(data.user)
+    if (!data) return null
+    authStore.saveUser(data.user ?? data)
     authStore.savePermissions(data.permissions ?? [])
     authStore.availableContexts = data.availableContexts ?? []
     return data

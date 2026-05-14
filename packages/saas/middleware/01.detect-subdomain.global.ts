@@ -13,12 +13,6 @@ export default defineNuxtRouteMiddleware(() => {
   const isBareLocalhost = hostname === 'localhost' || /^\d+(\.\d+){3}$/.test(hostname)
 
   if (isBareLocalhost) {
-    if (config.public.appEnv === 'local') {
-      useState<string>('tenantSlug', () => '').value = 'local'
-      const tenantStore = useTenantStore()
-      tenantStore.setSlug('local')
-      return
-    }
     return navigateTo('/tenant-error?reason=no-subdomain')
   }
 

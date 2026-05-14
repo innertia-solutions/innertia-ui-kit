@@ -63,9 +63,18 @@ export const useAuthStore = defineStore('auth', {
     rememberUser: false,
   }),
 
-  persist: {
-    pick: ['token', 'user', 'currentContext', 'availableContexts'],
-  },
+  persist: [
+    {
+      // El token en cookie para que el SSR lo lea y los middlewares (guest/auth)
+      // funcionen correctamente en el primer render del servidor.
+      pick: ['token'],
+      storage: piniaPluginPersistedstate.cookies,
+    },
+    {
+      // El resto en localStorage — no necesitan SSR.
+      pick: ['user', 'currentContext', 'availableContexts'],
+    },
+  ],
 
   actions: {
     // ── token ──────────────────────────────────────────────────────────────
