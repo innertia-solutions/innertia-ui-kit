@@ -1,9 +1,8 @@
-// useTenantStore, useApi auto-imported.
-// Server-only: valida el slug del tenant con el backend (timeout 5s).
+// useTenantStore auto-imported.
+// Server-only: valida el tenant via GET /ping con X-Tenant header.
+// Usa la URL interna del backend (apiInternalUrl) para evitar pasar por el proxy de Nitro.
 export default defineNuxtRouteMiddleware(async (to) => {
   if (!import.meta.server) return
-
-  const config = useRuntimeConfig()
 
   // Rutas públicas que no requieren tenant válido
   const publicRoutes = ['/tenant-error', '/404']
@@ -25,32 +24,39 @@ export default defineNuxtRouteMiddleware(async (to) => {
     return navigateTo('/tenant-error?reason=no-subdomain')
   }
 
-  const timeout = new Promise<never>((_, reject) =>
-    setTimeout(() => reject(new Error('timeout')), 5000)
-  )
+  // URL interna del backend (no pasa por el proxy Nitro — no existe en SSR)
+  const config = useRuntimeConfig()
+  const internalUrl = (config as any).apiInternalUrl || 'http://api:80'
+  const pingUrl = `${internalUrl}/ping`
+
+  console.log(`[tenant:validate] ping → ${pingUrl} (X-Tenant: ${tenantSlug})`)
 
   try {
-    const api = useApi()
-    const url = `tenant/validate?slug=${tenantSlug}`
-    console.log(`[tenant:validate] GET ${url}`)
-
-    const data = await Promise.race([
-      api.get(url, { useToken: false }),
-      timeout,
-    ])
+    const data = await $fetch<{ ok: boolean; tenant: { id: number; status: string; config: any } }>(
+      pingUrl,
+      {
+        headers: { 'X-Tenant': tenantSlug, 'Accept': 'application/json' },
+        timeout: 5000,
+      }
+    )
 
     console.log(`[tenant:validate] respuesta:`, JSON.stringify(data))
 
-    if (!data || !data.isActive) {
-      console.warn(`[tenant:validate] tenant inactivo o no encontrado → inactive`)
+    if (!data?.ok) {
+      console.warn('[tenant:validate] tenant inactivo → /tenant-error?reason=inactive')
       return navigateTo('/tenant-error?reason=inactive')
     }
 
     const tenantStore = useTenantStore()
-    tenantStore.setTenant(data.id, data.config ?? {})
-    console.log(`[tenant:validate] OK — tenant id=${data.id}`)
+    tenantStore.setTenant(data.tenant.id, data.tenant.config ?? {})
+    console.log(`[tenant:validate] OK — tenant id=${data.tenant.id} status=${data.tenant.status}`)
   } catch (e: any) {
-    const reason = e?.message === 'timeout' ? 'timeout' : 'unreachable'
+    const status = e?.response?.status
+    if (status === 404) {
+      console.warn(`[tenant:validate] 404 tenant no encontrado → inactive`)
+      return navigateTo('/tenant-error?reason=inactive')
+    }
+    const reason = e?.message?.includes('timeout') ? 'timeout' : 'unreachable'
     console.error(`[tenant:validate] error → ${reason}`, e?.message)
     return navigateTo(`/tenant-error?reason=${reason}`)
   }
