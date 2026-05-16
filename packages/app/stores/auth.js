@@ -65,14 +65,17 @@ export const useAuthStore = defineStore('auth', {
 
   persist: [
     {
-      // El token en cookie para que el SSR lo lea y los middlewares (guest/auth)
-      // funcionen correctamente en el primer render del servidor.
+      // Token en cookie con key propio para que SSR lo lea en middlewares (guest/auth).
+      // Key separado para evitar que la segunda config sobreescriba el token.
+      key: 'auth_token',
       pick: ['token'],
       storage: piniaPluginPersistedstate.cookies,
     },
     {
-      // El resto en localStorage — no necesitan SSR.
+      // Resto en localStorage — no necesitan SSR. Key separado para no colisionar.
+      key: 'auth_data',
       pick: ['user', 'currentContext', 'availableContexts'],
+      storage: piniaPluginPersistedstate.localStorage,
     },
   ],
 
