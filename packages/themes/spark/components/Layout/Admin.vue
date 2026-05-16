@@ -16,9 +16,9 @@ onMounted(() => {
       <template #menu><slot name="menu" /></template>
       <template #user-footer><slot name="user-footer" /></template>
 
-      <AdminPage>
+      <div class="lg:ps-65">
         <slot />
-      </AdminPage>
+      </div>
     </AdminBase>
   </div>
 </template>
