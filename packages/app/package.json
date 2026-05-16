@@ -1,7 +1,6 @@
 {
   "name": "@innertia-solutions/nuxt-app",
-
-  "version": "0.1.13",
+  "version": "0.1.14",
   "description": "Innertia Solutions — Nuxt app layer: auth, context, permissions, API client",
   "keywords": [
     "nuxt",
