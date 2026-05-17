@@ -178,9 +178,12 @@ const scheduleFetch = (delay = 0) => {
 }
 
 // ─── Cache ────────────────────────────────────────────────────────────────────
-const cacheKey = computed(() =>
-  props.cached && props.name ? `full_table_${props.name}` : null
-)
+const cacheKey = computed(() => {
+  if (!props.cached || !props.name) return null
+  const base = `full_table_${props.name}`
+  if (!Object.keys(props.params).length) return base
+  try { return base + '_' + btoa(JSON.stringify(props.params)) } catch { return base }
+})
 
 const saveToCache = () => {
   if (!cacheKey.value || !tableData.value.length) return
