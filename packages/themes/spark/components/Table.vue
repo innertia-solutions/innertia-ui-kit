@@ -1,13 +1,11 @@
 <script setup>
 import { useVueTable, getCoreRowModel } from '@tanstack/vue-table'
 import {
-  IconArrowsSort,
-  IconSortAscendingSmallBig,
-  IconSortDescendingSmallBig,
+  IconSelector,
+  IconChevronUp,
+  IconChevronDown,
   IconReload,
   IconBolt,
-  IconLayoutColumns,
-  IconGripVertical,
 } from '@tabler/icons-vue'
 
 const props = defineProps({
@@ -21,7 +19,9 @@ const props = defineProps({
   showReloadButton: { type: Boolean, default: true },
   viewMode: { type: String, default: 'table' }, // 'table' | 'grid'
   gridClass: { type: String, default: 'grid grid-cols-2 lg:grid-cols-3 gap-4' },
-  clickRowToOpen: { type: Boolean, default: false },
+  clickRowToOpen:  { type: Boolean, default: false },
+  previewRowId:    { type: [String, Number], default: null },
+  previewMode:     { type: Boolean, default: false },
 })
 
 const emit = defineEmits(['update:search', 'row-click', 'loaded'])
@@ -36,10 +36,13 @@ const tableData = ref([])
 const rowCount = ref(0)
 const loading = ref(false)
 const isDataFromCache = ref(false)
-const lastDataLength = ref(10)
+const lastDataLength = ref(-1)
 const lastRowHeight = ref(48)
 const tableBodyRef = ref(null)
-const skeletonRows = computed(() => Array.from({ length: lastDataLength.value }))
+const skeletonRows = computed(() => {
+  const count = lastDataLength.value < 0 ? pagination.value.pageSize : lastDataLength.value
+  return Array.from({ length: count })
+})
 const isGridView = computed(() => props.viewMode === 'grid')
 
 // ─── TanStack state ───────────────────────────────────────────────────────────
@@ -48,6 +51,8 @@ const sorting = ref([])
 const columnFilters = ref([])
 const columnVisibility = ref({})
 const columnOrder = ref([])
+const columnSizing = ref({})
+const columnSizingInfo = ref({})
 const rowSelection = ref({})
 const isCustomPerPage = ref(false)
 
@@ -64,7 +69,10 @@ const buildColumnDefs = () => {
       header: 'select',
       enableSorting: false,
       enableColumnFilter: false,
+      enableResizing: false,
       size: 48,
+      minSize: 48,
+      maxSize: 48,
     })
   }
   for (const col of props.columns) {
@@ -74,6 +82,10 @@ const buildColumnDefs = () => {
       header: col.label,
       enableSorting: col.sortable ?? false,
       enableColumnFilter: col.filterable ?? false,
+      enableResizing: col.resizable !== false,
+      size: col.size ?? 200,
+      minSize: 60,
+      maxSize: 800,
       meta: { class: col.class ?? '', label: col.label },
     })
   }
@@ -95,6 +107,8 @@ const table = useVueTable({
     get columnFilters() { return columnFilters.value },
     get columnVisibility() { return columnVisibility.value },
     get columnOrder() { return columnOrder.value },
+    get columnSizing() { return columnSizing.value },
+    get columnSizingInfo() { return columnSizingInfo.value },
     get rowSelection() { return rowSelection.value },
   },
   onPaginationChange: makeUpdater(pagination),
@@ -102,8 +116,12 @@ const table = useVueTable({
   onColumnFiltersChange: makeUpdater(columnFilters),
   onColumnVisibilityChange: makeUpdater(columnVisibility),
   onColumnOrderChange: makeUpdater(columnOrder),
+  onColumnSizingChange: makeUpdater(columnSizing),
+  onColumnSizingInfoChange: makeUpdater(columnSizingInfo),
   onRowSelectionChange: makeUpdater(rowSelection),
   getCoreRowModel: getCoreRowModel(),
+  columnResizeMode: 'onChange',
+  enableColumnResizing: true,
   manualPagination: true,
   manualSorting: true,
   manualFiltering: true,
@@ -128,10 +146,6 @@ const buildRequestParams = () => {
 const fetchData = async () => {
   if (tableData.value.length > 0) {
     lastDataLength.value = tableData.value.length
-    if (tableBodyRef.value?.children[0]) {
-      const h = tableBodyRef.value.children[0].getBoundingClientRect().height
-      if (h > 0) lastRowHeight.value = h
-    }
   }
 
   tableData.value = []
@@ -219,7 +233,11 @@ const loadFromCacheOnMount = async () => {
   sorting.value = cached.sorting
   columnFilters.value = cached.columnFilters
   columnVisibility.value = cached.columnVisibility
-  if (cached.columnOrder?.length) columnOrder.value = cached.columnOrder
+  if (cached.columnOrder?.length) {
+    const order = cached.columnOrder.filter(id => id !== 'select')
+    if (props.checkable) order.unshift('select')
+    columnOrder.value = order
+  }
   lastDataLength.value = cached.data.length
   isDataFromCache.value = true
 
@@ -231,6 +249,17 @@ const loadFromCacheOnMount = async () => {
 }
 
 // ─── Watchers ─────────────────────────────────────────────────────────────────
+watch(tableData, (newData) => {
+  if (newData.length > 0 && tableBodyRef.value) {
+    const firstDataRow = Array.from(tableBodyRef.value.children).find(el => el.dataset.rowType === 'data')
+    if (firstDataRow) {
+      const h = firstDataRow.getBoundingClientRect().height
+      if (h > 0) lastRowHeight.value = h
+      lastDataLength.value = newData.length
+    }
+  }
+}, { flush: 'post' })
+
 watch(pagination, () => { if (!isRestoring.value) scheduleFetch(0) }, { deep: true })
 watch(sorting, () => { if (!isRestoring.value) scheduleFetch(0) }, { deep: true })
 watch(columnFilters, () => { if (!isRestoring.value) scheduleFetch(300) }, { deep: true })
@@ -270,63 +299,57 @@ onBeforeUnmount(() => {
 })
 
 // ─── Column settings panel ────────────────────────────────────────────────────
-const showColumnPanel = ref(false)
-const columnPanelRef = ref(null)
-
-const orderedColumns = computed(() => {
-  if (!columnOrder.value.length) return props.columns
-  return [...props.columns].sort((a, b) => {
-    const ia = columnOrder.value.indexOf(a.key)
-    const ib = columnOrder.value.indexOf(b.key)
-    return (ia < 0 ? 999 : ia) - (ib < 0 ? 999 : ib)
-  })
-})
-
-let draggedPanelKey = null
-const dragOverPanelKey = ref(null)
-
-const onPanelDragStart = (key) => { draggedPanelKey = key }
-const onPanelDragOver = (e, key) => { e.preventDefault(); dragOverPanelKey.value = key }
-const onPanelDragLeave = () => { dragOverPanelKey.value = null }
-const onPanelDrop = (key) => {
-  if (!draggedPanelKey || draggedPanelKey === key) return
-  const order = [...columnOrder.value]
-  const from = order.indexOf(draggedPanelKey)
-  const to = order.indexOf(key)
-  if (from < 0 || to < 0) return
-  order.splice(from, 1)
-  order.splice(to, 0, draggedPanelKey)
-  columnOrder.value = order
-  draggedPanelKey = null
-  dragOverPanelKey.value = null
-}
-
-const handlePanelOutsideClick = (e) => {
-  if (columnPanelRef.value && !columnPanelRef.value.contains(e.target)) {
-    showColumnPanel.value = false
-  }
-}
-
-watch(showColumnPanel, (v) => {
-  if (v) document.addEventListener('mousedown', handlePanelOutsideClick)
-  else document.removeEventListener('mousedown', handlePanelOutsideClick)
-})
+const setColumnOrder = (order) => { columnOrder.value = order }
 
 // ─── Header drag reorder ──────────────────────────────────────────────────────
 let draggedHeaderId = null
 const dragOverHeaderId = ref(null)
+const resizeHoverId = ref(null)
+
+// ─── Column auto-size on double click ─────────────────────────────────────────
+const _canvas = typeof document !== 'undefined' ? document.createElement('canvas') : null
+const _ctx = _canvas?.getContext('2d')
+
+const measureText = (text, font) => {
+  if (!_ctx) return 0
+  _ctx.font = font
+  return _ctx.measureText(String(text ?? '')).width
+}
+
+const autoSizeColumn = (header) => {
+  const colId = header.column.id
+  const pad = 32 // px-4 on each side
+
+  // Measure header label
+  const label = header.column.columnDef.meta?.label ?? header.id
+  let max = measureText(label, '500 12px ui-sans-serif,system-ui,sans-serif') + pad + 20 // +20 for sort icon
+
+  // Measure all visible data cells
+  if (tableBodyRef.value) {
+    tableBodyRef.value.querySelectorAll(`td[data-col-id="${colId}"]`).forEach(td => {
+      const w = measureText(td.textContent?.trim(), '14px ui-sans-serif,system-ui,sans-serif') + pad
+      if (w > max) max = w
+    })
+  }
+
+  header.column.setSize(Math.ceil(max))
+}
 
 const onHeaderDragStart = (colId) => { draggedHeaderId = colId }
 const onHeaderDragOver = (e, colId) => { e.preventDefault(); dragOverHeaderId.value = colId }
 const onHeaderDragLeave = () => { dragOverHeaderId.value = null }
 const onHeaderDrop = (colId) => {
   if (!draggedHeaderId || draggedHeaderId === colId) return
+  if (colId === 'select') return
   const order = [...columnOrder.value]
   const from = order.indexOf(draggedHeaderId)
   const to = order.indexOf(colId)
   if (from < 0 || to < 0) return
   order.splice(from, 1)
   order.splice(to, 0, draggedHeaderId)
+  // keep 'select' pinned first
+  const selIdx = order.indexOf('select')
+  if (selIdx > 0) { order.splice(selIdx, 1); order.unshift('select') }
   columnOrder.value = order
   draggedHeaderId = null
   dragOverHeaderId.value = null
@@ -341,7 +364,7 @@ const getSelectedRows = () => {
 }
 
 // ─── Export ───────────────────────────────────────────────────────────────────
-const exportTable = async (format, exportAllPages, exportFilteredRows) => {
+const exportTable = async (format, exportAllPages, exportFilteredRows, selectedIds = null) => {
   const { download } = useDownload()
   const id = crypto.randomUUID()
   toast.show({
@@ -355,6 +378,7 @@ const exportTable = async (format, exportAllPages, exportFilteredRows) => {
     exportType: validFormats.includes(format) ? format : 'csv',
     exportAllPages,
     exportFilteredRows,
+    ...(selectedIds?.length ? { selectedIds } : {}),
   }
 
   try {
@@ -397,7 +421,7 @@ const resetPerPage = () => {
 
 // ─── Row click ────────────────────────────────────────────────────────────────
 const hasRowClickListener = computed(() => !!instance?.vnode?.props?.onRowClick)
-const isRowClickEnabled = computed(() => props.clickRowToOpen || hasRowClickListener.value)
+const isRowClickEnabled = computed(() => props.clickRowToOpen || props.previewMode || hasRowClickListener.value)
 
 const interactiveSelector = [
   'a', 'button', 'input', 'select', 'textarea', 'label', 'summary',
@@ -425,83 +449,59 @@ const handleRowKeydown = (row, e) => {
 }
 
 // ─── Expose ───────────────────────────────────────────────────────────────────
+const reloadTable = () => {
+  clearCache()
+  isDataFromCache.value = false
+  fetchData()
+}
+
 defineExpose({
   getSelectedRows,
   loading,
   exportTable,
-  reload: () => { clearCache(); fetchData() },
+  reload: reloadTable,
   clearCache,
   table,
+  setColumnOrder,
+  isDataFromCache,
+  cached: computed(() => props.cached),
 })
 </script>
 
 <template>
   <div class="relative">
 
-    <!-- Column settings panel -->
-    <Transition
-      enter-active-class="transition ease-out duration-150"
-      enter-from-class="opacity-0 translate-y-1 scale-95"
-      enter-to-class="opacity-100 translate-y-0 scale-100"
-      leave-active-class="transition ease-in duration-100"
-      leave-from-class="opacity-100 translate-y-0 scale-100"
-      leave-to-class="opacity-0 translate-y-1 scale-95"
-    >
-      <div
-        v-if="showColumnPanel"
-        ref="columnPanelRef"
-        class="absolute bottom-16 right-6 z-50 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl p-3 min-w-56 max-h-80 overflow-y-auto"
-      >
-        <p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 px-1">
-          Columnas visibles
-        </p>
-        <div
-          v-for="col in orderedColumns"
-          :key="col.key"
-          draggable="true"
-          @dragstart="onPanelDragStart(col.key)"
-          @dragover="(e) => onPanelDragOver(e, col.key)"
-          @dragleave="onPanelDragLeave"
-          @drop="onPanelDrop(col.key)"
-          class="flex items-center gap-2 py-1.5 px-2 rounded-lg select-none transition-colors"
-          :class="dragOverPanelKey === col.key
-            ? 'bg-indigo-50 dark:bg-indigo-900/20 ring-1 ring-indigo-300 dark:ring-indigo-700'
-            : 'hover:bg-slate-50 dark:hover:bg-slate-700 cursor-grab'"
-        >
-          <IconGripVertical class="size-4 text-slate-300 dark:text-slate-600 shrink-0" />
-          <input
-            type="checkbox"
-            :checked="table.getColumn(col.key)?.getIsVisible() ?? true"
-            @change="table.getColumn(col.key)?.toggleVisibility()"
-            @click.stop
-            class="rounded border-gray-300 dark:bg-slate-700 dark:border-slate-600 shrink-0 cursor-pointer"
-          />
-          <span class="text-sm text-slate-700 dark:text-slate-200 truncate">{{ col.label }}</span>
-        </div>
-      </div>
-    </Transition>
-
     <!-- Table view -->
     <div v-if="!isGridView" class="overflow-x-auto relative">
-      <table class="relative min-w-full divide-y divide-gray-200 dark:divide-slate-700">
+      <table
+        class="relative divide-y divide-gray-200 dark:divide-slate-700"
+        :style="{ tableLayout: 'fixed', width: table.getTotalSize() + 'px', minWidth: '100%' }"
+      >
+        <colgroup>
+          <col
+            v-for="col in table.getVisibleLeafColumns()"
+            :key="col.id"
+            :style="{ width: col.getSize() + 'px' }"
+          >
+        </colgroup>
         <thead class="relative z-20 bg-white dark:bg-slate-800">
           <template v-for="headerGroup in table.getHeaderGroups()" :key="headerGroup.id">
             <!-- Main header row -->
             <tr
-              class="divide-x divide-gray-200 dark:border-slate-700 dark:divide-slate-700"
-              :class="{ 'border-t border-gray-200': loading || tableData.length > 0 }"
+              class="divide-x divide-slate-200 dark:divide-slate-700"
             >
               <th
                 v-for="header in headerGroup.headers"
                 :key="header.id"
                 scope="col"
-                :draggable="header.id !== 'select'"
-                @dragstart="header.id !== 'select' && onHeaderDragStart(header.id)"
+                :draggable="header.id !== 'select' && resizeHoverId !== header.id"
+                @dragstart="header.id !== 'select' && resizeHoverId !== header.id && onHeaderDragStart(header.id)"
                 @dragover="header.id !== 'select' && onHeaderDragOver($event, header.id)"
                 @dragleave="onHeaderDragLeave"
                 @drop="header.id !== 'select' && onHeaderDrop(header.id)"
+                class="relative overflow-hidden"
                 :class="[
-                  header.id === 'select' ? 'text-center w-12' : (header.column.columnDef.meta?.class || 'min-w-52'),
+                  header.id === 'select' ? 'text-center' : '',
                   dragOverHeaderId === header.id ? 'bg-indigo-50 dark:bg-indigo-900/20' : '',
                   header.column.getCanSort() ? 'cursor-pointer select-none' : '',
                 ]"
@@ -514,18 +514,37 @@ defineExpose({
                     :checked="table.getIsAllRowsSelected()"
                     :indeterminate="table.getIsSomeRowsSelected()"
                     @change="table.getToggleAllRowsSelectedHandler()($event)"
-                    class="mx-2 shrink-0 border-gray-300 rounded-sm text-blue-900 focus:ring-blue-900 dark:bg-slate-800 dark:border-slate-600"
+                    class="mx-2 shrink-0 border-gray-300 rounded-sm text-blue-900 focus:ring-0 focus:ring-offset-0 dark:bg-slate-800 dark:border-slate-600"
                   />
                 </template>
                 <!-- Regular column header -->
                 <template v-else>
-                  <div class="px-6 py-3 flex items-center gap-x-1 text-[11px] font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider w-full">
+                  <div class="px-4 py-3 flex items-center gap-x-1 text-xs font-medium text-slate-500 dark:text-slate-400 w-full">
                     {{ header.column.columnDef.meta?.label ?? header.id }}
                     <span v-if="header.column.getCanSort()">
-                      <IconArrowsSort v-if="!header.column.getIsSorted()" class="size-4 opacity-40" />
-                      <IconSortDescendingSmallBig v-else-if="header.column.getIsSorted() === 'desc'" class="size-5" />
-                      <IconSortAscendingSmallBig v-else class="size-5" />
+                      <IconSelector v-if="!header.column.getIsSorted()" class="size-4 opacity-40" />
+                      <IconChevronDown v-else-if="header.column.getIsSorted() === 'desc'" class="size-4" />
+                      <IconChevronUp v-else class="size-4" />
                     </span>
+                  </div>
+                  <!-- Resize handle -->
+                  <div
+                    v-if="header.column.getCanResize()"
+                    class="absolute right-0 top-0 h-full w-3 cursor-col-resize group/rz flex items-center justify-center select-none touch-none"
+                    @mouseenter="resizeHoverId = header.id"
+                    @mouseleave="resizeHoverId = null"
+                    @mousedown.stop="header.getResizeHandler()?.($event)"
+                    @touchstart.passive.stop="header.getResizeHandler()?.($event)"
+                    @dblclick.stop="autoSizeColumn(header)"
+                    @dragstart.stop.prevent
+                    @click.stop
+                  >
+                    <div
+                      class="h-4 w-px transition-all"
+                      :class="header.column.getIsResizing()
+                        ? 'bg-indigo-400 dark:bg-indigo-500 !w-0.5'
+                        : 'bg-slate-200 dark:bg-slate-600 group-hover/rz:bg-indigo-300 dark:group-hover/rz:bg-indigo-600 group-hover/rz:w-0.5'"
+                    />
                   </div>
                 </template>
               </th>
@@ -554,7 +573,7 @@ defineExpose({
         </thead>
 
         <tbody ref="tableBodyRef" class="divide-y divide-gray-200 dark:divide-slate-700">
-          <!-- Loading skeleton -->
+          <!-- Loading skeleton rows -->
           <tr
             v-if="loading"
             v-for="(_, i) in skeletonRows"
@@ -564,7 +583,7 @@ defineExpose({
             <td
               v-for="header in (table.getHeaderGroups()[0]?.headers ?? [])"
               :key="'skc-' + header.id"
-              :class="header.id === 'select' ? 'text-center w-12' : 'px-6'"
+              :class="header.id === 'select' ? 'text-center w-12' : 'px-4'"
               :style="{ height: lastRowHeight + 'px' }"
             >
               <div v-if="header.id === 'select'" class="w-4 h-4 bg-gray-300 dark:bg-slate-600 rounded mx-auto"></div>
@@ -572,22 +591,32 @@ defineExpose({
             </td>
           </tr>
 
-          <!-- Empty skeleton -->
+          <!-- Loading filler rows: pad to pageSize so table height doesn't change -->
+          <tr
+            v-if="loading && skeletonRows.length < pagination.pageSize"
+            v-for="i in (pagination.pageSize - skeletonRows.length)"
+            :key="'lf-' + i"
+            class="divide-x divide-gray-200 dark:divide-slate-700 bg-white dark:bg-slate-800"
+          >
+            <td
+              v-for="header in (table.getHeaderGroups()[0]?.headers ?? [])"
+              :key="'lfc-' + header.id"
+              :style="{ height: lastRowHeight + 'px' }"
+            />
+          </tr>
+
+          <!-- Empty filler rows: maintain table height when no results -->
           <tr
             v-if="!loading && tableData.length === 0"
-            v-for="(_, i) in skeletonRows"
+            v-for="i in pagination.pageSize"
             :key="'esk-' + i"
             class="divide-x divide-gray-200 dark:divide-slate-700 bg-white dark:bg-slate-800"
           >
             <td
               v-for="header in (table.getHeaderGroups()[0]?.headers ?? [])"
               :key="'eskc-' + header.id"
-              :class="header.id === 'select' ? 'text-center w-12' : 'px-6'"
               :style="{ height: lastRowHeight + 'px' }"
-            >
-              <div v-if="header.id === 'select'" class="w-4 h-4 bg-gray-200 dark:bg-slate-600 rounded mx-auto"></div>
-              <div v-else class="h-4 w-[50%] rounded bg-gray-100 dark:bg-slate-700"></div>
-            </td>
+            />
           </tr>
 
           <!-- Data rows -->
@@ -595,6 +624,7 @@ defineExpose({
             v-else
             v-for="row in table.getRowModel().rows"
             :key="row.id"
+            data-row-type="data"
             @click="(e) => handleRowClick(row, e)"
             @keydown="(e) => handleRowKeydown(row, e)"
             :tabindex="isRowClickEnabled ? 0 : undefined"
@@ -602,18 +632,19 @@ defineExpose({
             :class="{
               'cursor-pointer': isRowClickEnabled,
               'bg-indigo-50/40 dark:bg-indigo-900/10 hover:bg-indigo-50/60': row.getIsSelected(),
+              '!bg-indigo-50 dark:!bg-indigo-900/20 ring-1 ring-inset ring-indigo-200 dark:ring-indigo-700': previewRowId && row.original.id === previewRowId,
             }"
           >
             <td
               v-for="cell in row.getVisibleCells()"
               :key="cell.id"
+              :data-col-id="cell.column.id"
               :class="[
                 cell.column.id === 'select'
                   ? 'text-center w-12'
-                  : 'px-6 py-3 text-sm text-slate-600 dark:text-slate-300',
+                  : 'px-4 py-3 text-sm text-slate-600 dark:text-slate-300',
                 cell.column.id !== 'select' ? cell.column.columnDef.meta?.class ?? '' : '',
               ]"
-              @click.stop="cell.column.id === 'select' ? null : undefined"
             >
               <!-- Select checkbox -->
               <template v-if="cell.column.id === 'select'">
@@ -623,7 +654,7 @@ defineExpose({
                     :checked="row.getIsSelected()"
                     :disabled="!row.getCanSelect()"
                     @change="row.getToggleSelectedHandler()($event)"
-                    class="rounded border-gray-300 dark:bg-slate-800 dark:border-slate-600"
+                    class="rounded border-gray-300 focus:ring-0 focus:ring-offset-0 dark:bg-slate-800 dark:border-slate-600"
                   />
                 </div>
               </template>
@@ -634,6 +665,20 @@ defineExpose({
                 </slot>
               </template>
             </td>
+          </tr>
+
+          <!-- Filler rows: pad table to full page height when data < perPage -->
+          <tr
+            v-if="!loading && tableData.length > 0 && tableData.length < pagination.pageSize"
+            v-for="i in (pagination.pageSize - tableData.length)"
+            :key="'fill-' + i"
+            class="divide-x divide-gray-200 dark:divide-slate-700 bg-white dark:bg-slate-800"
+          >
+            <td
+              v-for="header in (table.getHeaderGroups()[0]?.headers ?? [])"
+              :key="'fillc-' + header.id"
+              :style="{ height: lastRowHeight + 'px' }"
+            />
           </tr>
         </tbody>
       </table>
@@ -714,7 +759,7 @@ defineExpose({
     </div>
 
     <!-- Pagination & controls bar -->
-    <div class="flex flex-col sm:flex-row items-center justify-between gap-y-4 sm:gap-y-0 mt-4 px-6 pb-6">
+    <div class="flex flex-col sm:flex-row items-center justify-between gap-y-4 sm:gap-y-0 px-4 py-3 border-t border-slate-200 dark:border-slate-700">
       <!-- Left: reload, total, cache, columns button -->
       <div class="flex items-center gap-x-4 flex-wrap gap-y-2">
         <!-- Reload button -->
@@ -722,7 +767,7 @@ defineExpose({
           <IconReload
             v-if="!loading"
             class="size-4 cursor-pointer text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-300 transition-colors"
-            @click="() => { clearCache(); isDataFromCache.value = false; fetchData() }"
+            @click="reloadTable"
           />
           <div v-else>
             <svg class="animate-spin size-4 text-slate-400 dark:text-slate-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -750,15 +795,6 @@ defineExpose({
           </div>
         </div>
 
-        <!-- Columns panel button -->
-        <button
-          @click="showColumnPanel = !showColumnPanel"
-          class="flex items-center gap-x-1.5 py-1 px-2.5 rounded-lg text-[11px] font-bold text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors border border-transparent"
-          :class="showColumnPanel ? 'bg-slate-100 dark:bg-slate-700 border-slate-200 dark:border-slate-600' : ''"
-        >
-          <IconLayoutColumns class="size-4" />
-          Columnas
-        </button>
       </div>
 
       <!-- Right: per-page + pagination -->
