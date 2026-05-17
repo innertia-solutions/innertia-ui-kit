@@ -251,7 +251,7 @@ defineExpose({ getSelectedRows, reload, clearCache, exportTable, tableRef })
       </div>
 
       <!-- Contenido: tabla siempre full width + preview overlay -->
-      <div class="relative">
+      <div class="relative overflow-hidden">
 
         <!-- Tabla -->
         <Table
@@ -288,7 +288,7 @@ defineExpose({ getSelectedRows, reload, clearCache, exportTable, tableRef })
         >
           <div
             v-if="previewRow && previewEnabled"
-            class="absolute top-0 right-0 z-10 flex bg-white dark:bg-slate-800 border-l border-slate-200 dark:border-slate-700 shadow-xl"
+            class="absolute top-0 right-0 z-30 flex bg-white dark:bg-slate-800 border-l border-slate-200 dark:border-slate-700 shadow-[-4px_0_16px_rgba(0,0,0,0.06)]"
             :style="{ width: (100 - currentRatio) + '%', bottom: paginationHeight + 'px' }"
           >
             <!-- Resize handle -->
