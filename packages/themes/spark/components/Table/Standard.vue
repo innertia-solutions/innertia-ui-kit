@@ -56,6 +56,7 @@ const paginationHeight = ref(0)
 
 const previewCacheKey = computed(() => `table-preview-${props.name}`)
 
+const previewFromCache = ref(false)
 const closePreview = () => { previewRow.value = null }
 
 const handleRowClick = (row) => {
@@ -115,11 +116,16 @@ const onEsc = (e) => { if (e.key === 'Escape' && previewRow.value) closePreview(
 onMounted(() => {
   previewEnabled.value = !!slots.preview
   window.addEventListener('keydown', onEsc)
-  // Restore preview from session cache
+  // Restore preview from session cache — mark as from-cache to skip enter animation
   if (props.cached && previewEnabled.value) {
     try {
       const raw = sessionStorage.getItem(previewCacheKey.value)
-      if (raw) previewRow.value = JSON.parse(raw)
+      if (raw) {
+        previewFromCache.value = true
+        previewRow.value = JSON.parse(raw)
+        await nextTick()
+        previewFromCache.value = false
+      }
     } catch {}
   }
 })
@@ -283,9 +289,9 @@ defineExpose({ getSelectedRows, reload, clearCache, exportTable, tableRef })
 
         <!-- Preview panel overlay — slides in from right, tapa la tabla -->
         <Transition
-          enter-active-class="transition ease-out duration-200"
-          enter-from-class="opacity-0 translate-x-6"
-          enter-to-class="opacity-100 translate-x-0"
+          :enter-active-class="previewFromCache ? '' : 'transition ease-out duration-200'"
+          :enter-from-class="previewFromCache ? '' : 'opacity-0 translate-x-6'"
+          :enter-to-class="previewFromCache ? '' : 'opacity-100 translate-x-0'"
           leave-active-class="transition ease-in duration-150"
           leave-from-class="opacity-100 translate-x-0"
           leave-to-class="opacity-0 translate-x-6"
