@@ -208,37 +208,32 @@ defineExpose({ getSelectedRows, reload, clearCache, exportTable, tableRef })
         <TableExportable v-if="showExport" :table-ref="tableRef" :name="name" :columns="columns" />
       </div>
 
-      <!-- Contenido: tabla + preview en flex -->
-      <div :class="previewEnabled ? 'flex items-stretch overflow-hidden' : ''">
+      <!-- Contenido: tabla siempre full width + preview overlay -->
+      <div class="relative">
 
         <!-- Tabla -->
-        <div
-          class="min-w-0 transition-[width] duration-200 ease-out"
-          :style="previewEnabled ? { width: (previewRow ? currentRatio : 100) + '%', flexShrink: 0 } : {}"
+        <Table
+          ref="tableRef"
+          :endpoint="endpoint"
+          :columns="columns"
+          :name="name"
+          :params="mergedParams"
+          :search="search"
+          :checkable="checkable"
+          :cached="cached"
+          :show-reload-button="showReloadButton"
+          :click-row-to-open="clickRowToOpen"
+          :preview-row-id="previewRow?.id ?? null"
+          :preview-mode="!!previewEnabled"
+          @row-click="handleRowClick"
+          @loaded="emit('loaded', $event)"
         >
-          <Table
-            ref="tableRef"
-            :endpoint="endpoint"
-            :columns="columns"
-            :name="name"
-            :params="mergedParams"
-            :search="search"
-            :checkable="checkable"
-            :cached="cached"
-            :show-reload-button="showReloadButton"
-            :click-row-to-open="clickRowToOpen"
-            :preview-row-id="previewRow?.id ?? null"
-            :preview-mode="!!previewEnabled"
-            @row-click="handleRowClick"
-            @loaded="emit('loaded', $event)"
-          >
-            <template v-for="(_, name) in $slots" #[name]="slotProps">
-              <slot :name="name" v-bind="slotProps ?? {}" />
-            </template>
-          </Table>
-        </div>
+          <template v-for="(_, name) in $slots" #[name]="slotProps">
+            <slot :name="name" v-bind="slotProps ?? {}" />
+          </template>
+        </Table>
 
-        <!-- Divider + preview con animación slide -->
+        <!-- Preview panel overlay — slides in from right, tapa la tabla -->
         <Transition
           enter-active-class="transition ease-out duration-200"
           enter-from-class="opacity-0 translate-x-6"
@@ -249,7 +244,7 @@ defineExpose({ getSelectedRows, reload, clearCache, exportTable, tableRef })
         >
           <div
             v-if="previewRow && previewEnabled"
-            class="flex items-stretch shrink-0 min-w-0"
+            class="absolute inset-y-0 right-0 z-10 flex bg-white dark:bg-slate-800 border-l border-slate-200 dark:border-slate-700 shadow-xl"
             :style="{ width: (100 - currentRatio) + '%' }"
           >
             <!-- Resize handle -->
@@ -258,7 +253,7 @@ defineExpose({ getSelectedRows, reload, clearCache, exportTable, tableRef })
               @mousedown="startResize"
             />
             <!-- Preview -->
-            <div class="flex flex-col overflow-y-auto border-l border-slate-200 dark:border-slate-700 flex-1">
+            <div class="flex flex-col overflow-y-auto flex-1">
               <slot name="preview" :row="previewRow" :close="closePreview" />
             </div>
           </div>
