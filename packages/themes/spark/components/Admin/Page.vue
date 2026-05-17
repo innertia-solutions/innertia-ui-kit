@@ -30,7 +30,7 @@ const iconColorClass = computed(() => ({
     <!-- Page header card -->
     <div v-if="title" class="flex items-center justify-between bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm px-4 py-3">
       <div class="flex items-center gap-x-4 min-w-0">
-        <div v-if="iconComponent" class="shrink-0 size-10 rounded-xl flex items-center justify-center" :class="iconColorClass">
+        <div v-if="iconComponent" class="shrink-0 size-10 rounded-xl flex items-center justify-center border border-current/15" :class="iconColorClass">
           <component :is="iconComponent" class="size-5" stroke="1.5" />
         </div>
         <div class="min-w-0">
