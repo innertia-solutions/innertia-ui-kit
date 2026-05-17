@@ -2,9 +2,10 @@
 import { IconSearch, IconAdjustmentsHorizontal, IconLayoutColumns, IconGripVertical } from '@tabler/icons-vue'
 
 const props = defineProps({
-  endpoint:          { type: String,  required: true },
+  table:             { type: Object,  default: null },
+  endpoint:          { type: String,  default: '' },
   columns:           { type: Array,   required: true },
-  name:              { type: String,  required: true },
+  name:              { type: String,  default: '' },
   params:            { type: Object,  default: () => ({}) },
   checkable:         { type: Boolean, default: false },
   cached:            { type: Boolean, default: true },
@@ -17,6 +18,9 @@ const props = defineProps({
   filters:           { type: Array,   default: () => [] },
   splitRatio:        { type: Number,  default: 60 },
 })
+
+const resolvedEndpoint = computed(() => props.table?.endpoint ?? props.endpoint)
+const resolvedName     = computed(() => props.table?.name     ?? props.name)
 
 const emit = defineEmits(['row-click', 'loaded'])
 const slots = useSlots()
@@ -54,7 +58,7 @@ const containerRef    = ref(null)
 const previewEnabled  = ref(false)
 const paginationHeight = ref(0)
 
-const previewCacheKey = computed(() => `table-preview-${props.name}`)
+const previewCacheKey = computed(() => `table-preview-${resolvedName.value}`)
 
 const previewFromCache = ref(false)
 const closePreview = () => { previewRow.value = null }
@@ -258,7 +262,7 @@ defineExpose({ getSelectedRows, reload, clearCache, exportTable, tableRef })
           Columnas
         </button>
 
-        <TableExportable v-if="showExport" :table-ref="tableRef" :name="name" :columns="columns" />
+        <TableExportable v-if="showExport" :table-ref="tableRef" :name="resolvedName" :columns="columns" />
       </div>
 
       <!-- Contenido: tabla siempre full width + preview overlay -->
@@ -267,9 +271,9 @@ defineExpose({ getSelectedRows, reload, clearCache, exportTable, tableRef })
         <!-- Tabla -->
         <Table
           ref="tableRef"
-          :endpoint="endpoint"
+          :endpoint="resolvedEndpoint"
           :columns="columns"
-          :name="name"
+          :name="resolvedName"
           :params="mergedParams"
           :search="search"
           :checkable="checkable"

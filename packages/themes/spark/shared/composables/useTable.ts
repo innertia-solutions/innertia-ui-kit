@@ -1,6 +1,10 @@
 // composables/useTable.ts
 
-export function useTable() {
+type TableConfig = { name: string; endpoint: string } | string
+
+export function useTable(tableOrName?: TableConfig) {
+    const resolvedName = typeof tableOrName === 'object' ? tableOrName?.name : tableOrName
+
     const invalidateCache = (tableName: string) => {
         if (!tableName) {
             console.warn('[useTable] No table name provided');
@@ -72,7 +76,13 @@ export function useTable() {
         return { filters, resetFilters };
     };
 
+    const invalidate = () => {
+        if (resolvedName) invalidateCache(resolvedName)
+        else console.warn('[useTable] No table name to invalidate')
+    }
+
     return {
+        invalidate,
         invalidateCache,
         invalidateMultiple,
         clearAllCache,
