@@ -5,6 +5,7 @@ export function useAuth() {
   const api = useApi()
   const config = useRuntimeConfig()
   const loginPath = config.public.loginPath || '/login'
+  const queryClient = useQueryClient()
 
   /**
    * Standard login (email + password).
@@ -15,6 +16,7 @@ export function useAuth() {
     const data = await api.post(`${context}/auth/login`, { email, password, app: context })
     authStore.saveToken(data.token ?? data.access_token)
     authStore.setCurrentContext(context)
+    queryClient.clear()
     await fetchMe()
     return data
   }
@@ -41,6 +43,7 @@ export function useAuth() {
     } catch {
       // best-effort — ignore network failures
     }
+    queryClient.clear()
     authStore.logout()
     await navigateTo(loginPath)
   }
@@ -61,6 +64,7 @@ export function useAuth() {
     const data = await api.post(`${context}/auth/oauth/${provider}/callback`, { code })
     authStore.saveToken(data.token ?? data.access_token)
     authStore.setCurrentContext(context)
+    queryClient.clear()
     await fetchMe()
     return data
   }
