@@ -74,12 +74,13 @@ watch(previewRow, (row) => {
   else sessionStorage.removeItem(previewCacheKey.value)
 })
 
-// When data reloads, update previewRow with fresh data from response
+// When data reloads, update previewRow with fresh data — close silently if deleted
 const handleLoaded = (res) => {
   emit('loaded', res)
   if (previewRow.value && Array.isArray(res?.data)) {
     const fresh = res.data.find(r => r.id === previewRow.value.id)
     if (fresh) previewRow.value = fresh
+    else closePreview()
   }
 }
 
