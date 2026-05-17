@@ -48,6 +48,9 @@ const previewRow      = ref(null)
 const currentRatio    = ref(props.splitRatio)
 const containerRef    = ref(null)
 const previewEnabled  = ref(false)
+const paginationHeight = ref(0)
+
+const previewCacheKey = computed(() => `table-preview-${props.name}`)
 
 const closePreview = () => { previewRow.value = null }
 
@@ -58,6 +61,35 @@ const handleRowClick = (row) => {
     emit('row-click', row)
   }
 }
+
+// Persist preview row in session cache when table cache is enabled
+watch(previewRow, (row) => {
+  if (!props.cached) return
+  if (row) sessionStorage.setItem(previewCacheKey.value, JSON.stringify(row))
+  else sessionStorage.removeItem(previewCacheKey.value)
+})
+
+// When data reloads, update previewRow with fresh data from response
+const handleLoaded = (res) => {
+  emit('loaded', res)
+  if (previewRow.value && Array.isArray(res?.data)) {
+    const fresh = res.data.find(r => r.id === previewRow.value.id)
+    if (fresh) previewRow.value = fresh
+  }
+}
+
+// Track pagination bar height so the overlay never covers it
+let paginationObserver = null
+watch(() => tableRef.value?.paginationBarRef, (el) => {
+  paginationObserver?.disconnect()
+  paginationObserver = null
+  if (!el) return
+  paginationHeight.value = el.offsetHeight
+  paginationObserver = new ResizeObserver(() => {
+    paginationHeight.value = el.offsetHeight
+  })
+  paginationObserver.observe(el)
+}, { flush: 'post' })
 
 const startResize = (e) => {
   e.preventDefault()
@@ -79,8 +111,18 @@ const onEsc = (e) => { if (e.key === 'Escape' && previewRow.value) closePreview(
 onMounted(() => {
   previewEnabled.value = !!slots.preview
   window.addEventListener('keydown', onEsc)
+  // Restore preview from session cache
+  if (props.cached && previewEnabled.value) {
+    try {
+      const raw = sessionStorage.getItem(previewCacheKey.value)
+      if (raw) previewRow.value = JSON.parse(raw)
+    } catch {}
+  }
 })
-onBeforeUnmount(() => window.removeEventListener('keydown', onEsc))
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onEsc)
+  paginationObserver?.disconnect()
+})
 
 // ─── Column panel ─────────────────────────────────────────────────────────────
 const showColumnPanel = ref(false)
@@ -226,7 +268,9 @@ defineExpose({ getSelectedRows, reload, clearCache, exportTable, tableRef })
           :preview-row-id="previewRow?.id ?? null"
           :preview-mode="!!previewEnabled"
           @row-click="handleRowClick"
-          @loaded="emit('loaded', $event)"
+          @loaded="handleLoaded"
+          @page-change="closePreview"
+          @per-page-change="closePreview"
         >
           <template v-for="(_, name) in $slots" #[name]="slotProps">
             <slot :name="name" v-bind="slotProps ?? {}" />
@@ -244,8 +288,8 @@ defineExpose({ getSelectedRows, reload, clearCache, exportTable, tableRef })
         >
           <div
             v-if="previewRow && previewEnabled"
-            class="absolute inset-y-0 right-0 z-10 flex bg-white dark:bg-slate-800 border-l border-slate-200 dark:border-slate-700 shadow-xl"
-            :style="{ width: (100 - currentRatio) + '%' }"
+            class="absolute top-0 right-0 z-10 flex bg-white dark:bg-slate-800 border-l border-slate-200 dark:border-slate-700 shadow-xl"
+            :style="{ width: (100 - currentRatio) + '%', bottom: paginationHeight + 'px' }"
           >
             <!-- Resize handle -->
             <div

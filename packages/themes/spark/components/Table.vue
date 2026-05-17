@@ -24,7 +24,7 @@ const props = defineProps({
   previewMode:     { type: Boolean, default: false },
 })
 
-const emit = defineEmits(['update:search', 'row-click', 'loaded'])
+const emit = defineEmits(['update:search', 'row-click', 'loaded', 'page-change', 'per-page-change'])
 const instance = getCurrentInstance()
 
 // ─── API / toast ─────────────────────────────────────────────────────────────
@@ -39,6 +39,7 @@ const isDataFromCache = ref(false)
 const lastDataLength = ref(-1)
 const lastRowHeight = ref(48)
 const tableBodyRef = ref(null)
+const paginationBarRef = ref(null)
 const skeletonRows = computed(() => {
   const count = lastDataLength.value < 0 ? pagination.value.pageSize : lastDataLength.value
   return Array.from({ length: count })
@@ -261,6 +262,13 @@ watch(tableData, (newData) => {
 }, { flush: 'post' })
 
 watch(pagination, () => { if (!isRestoring.value) scheduleFetch(0) }, { deep: true })
+
+watch(() => pagination.value.pageIndex, (val, old) => {
+  if (!isRestoring.value && val !== old) emit('page-change', val)
+})
+watch(() => pagination.value.pageSize, (val, old) => {
+  if (!isRestoring.value && val !== old) emit('per-page-change', val)
+})
 watch(sorting, () => { if (!isRestoring.value) scheduleFetch(0) }, { deep: true })
 watch(columnFilters, () => { if (!isRestoring.value) scheduleFetch(300) }, { deep: true })
 
@@ -463,6 +471,7 @@ defineExpose({
   setColumnOrder,
   isDataFromCache,
   cached: computed(() => props.cached),
+  paginationBarRef,
 })
 </script>
 
@@ -757,7 +766,7 @@ defineExpose({
     </div>
 
     <!-- Pagination & controls bar -->
-    <div class="flex flex-col sm:flex-row items-center justify-between gap-y-4 sm:gap-y-0 px-4 py-3 border-t border-slate-200 dark:border-slate-700">
+    <div ref="paginationBarRef" class="flex flex-col sm:flex-row items-center justify-between gap-y-4 sm:gap-y-0 px-4 py-3 border-t border-slate-200 dark:border-slate-700">
       <!-- Left: reload, total, cache, columns button -->
       <div class="flex items-center gap-x-4 flex-wrap gap-y-2">
         <!-- Reload button -->
