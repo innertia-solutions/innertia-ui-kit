@@ -189,11 +189,12 @@ defineExpose({ getSelectedRows, reload, clearCache, exportTable, tableRef })
       </div>
 
       <!-- Contenido: tabla + preview en flex -->
-      <div :class="previewRow && previewEnabled ? 'flex items-stretch' : ''">
+      <div :class="previewEnabled ? 'flex items-stretch overflow-hidden' : ''">
 
         <!-- Tabla -->
         <div
-          :style="previewRow && previewEnabled ? { width: currentRatio + '%', flexShrink: 0, minWidth: 0 } : {}"
+          class="min-w-0 transition-[width] duration-200 ease-out"
+          :style="previewRow && previewEnabled ? { width: currentRatio + '%', flexShrink: 0 } : {}"
         >
           <Table
             ref="tableRef"
@@ -217,21 +218,31 @@ defineExpose({ getSelectedRows, reload, clearCache, exportTable, tableRef })
           </Table>
         </div>
 
-        <!-- Divider + preview -->
-        <template v-if="previewRow && previewEnabled">
-          <!-- Resize handle -->
+        <!-- Divider + preview con animación slide -->
+        <Transition
+          enter-active-class="transition ease-out duration-200"
+          enter-from-class="opacity-0 translate-x-6"
+          enter-to-class="opacity-100 translate-x-0"
+          leave-active-class="transition ease-in duration-150"
+          leave-from-class="opacity-100 translate-x-0"
+          leave-to-class="opacity-0 translate-x-6"
+        >
           <div
-            class="w-1 shrink-0 cursor-col-resize bg-slate-100 dark:bg-slate-700/60 hover:bg-indigo-300 dark:hover:bg-indigo-600 transition-colors"
-            @mousedown="startResize"
-          />
-          <!-- Preview -->
-          <div
-            class="flex flex-col overflow-y-auto border-l border-slate-200 dark:border-slate-700"
-            :style="{ width: (100 - currentRatio) + '%', flexShrink: 0, minWidth: 0 }"
+            v-if="previewRow && previewEnabled"
+            class="flex items-stretch shrink-0 min-w-0"
+            :style="{ width: (100 - currentRatio) + '%' }"
           >
-            <slot name="preview" :row="previewRow" :close="closePreview" />
+            <!-- Resize handle -->
+            <div
+              class="w-1 shrink-0 cursor-col-resize bg-slate-100 dark:bg-slate-700/60 hover:bg-indigo-300 dark:hover:bg-indigo-600 transition-colors"
+              @mousedown="startResize"
+            />
+            <!-- Preview -->
+            <div class="flex flex-col overflow-y-auto border-l border-slate-200 dark:border-slate-700 flex-1">
+              <slot name="preview" :row="previewRow" :close="closePreview" />
+            </div>
           </div>
-        </template>
+        </Transition>
 
       </div>
     </div>
