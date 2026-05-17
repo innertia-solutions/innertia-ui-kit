@@ -272,7 +272,7 @@ defineExpose({ getSelectedRows, reload, clearCache, exportTable, tableRef })
           @page-change="closePreview"
           @per-page-change="closePreview"
         >
-          <template v-for="(_, name) in $slots" #[name]="slotProps">
+          <template v-for="(_, name) in $slots" v-if="name !== 'toolbar' && name !== 'preview'" #[name]="slotProps">
             <slot :name="name" v-bind="slotProps ?? {}" />
           </template>
         </Table>
