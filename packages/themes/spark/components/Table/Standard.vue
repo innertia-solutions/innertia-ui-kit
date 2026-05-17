@@ -24,6 +24,7 @@ const slots = useSlots()
 const search       = ref('')
 const activeFilters = ref({})
 const showFilterPanel = ref(false)
+const filterPanelRef  = ref(null)
 const tableRef     = ref(null)
 
 // ─── Filter config ─────────────────────────────────────────────────────────────
@@ -51,10 +52,8 @@ const previewEnabled  = ref(false)
 const closePreview = () => { previewRow.value = null }
 
 const handleRowClick = (row) => {
-  console.log('[Standard] handleRowClick | previewEnabled:', previewEnabled.value, '| row:', row?.name ?? row?.id)
   if (previewEnabled.value) {
     previewRow.value = previewRow.value?.id === row.id ? null : row
-    console.log('[Standard] previewRow =', previewRow.value?.name ?? previewRow.value?.id)
   } else {
     emit('row-click', row)
   }
@@ -79,7 +78,6 @@ const startResize = (e) => {
 const onEsc = (e) => { if (e.key === 'Escape' && previewRow.value) closePreview() }
 onMounted(() => {
   previewEnabled.value = !!slots.preview
-  console.log('[Standard] mounted | previewEnabled:', previewEnabled.value, '| slot keys:', Object.keys(slots))
   window.addEventListener('keydown', onEsc)
 })
 onBeforeUnmount(() => window.removeEventListener('keydown', onEsc))
@@ -115,15 +113,24 @@ const onDrop = (key) => {
   dragOverKey.value = null
 }
 
-const onPanelOutsideClick = (e) => {
+const onColumnPanelOutsideClick = (e) => {
   if (columnPanelRef.value && !columnPanelRef.value.contains(e.target)) {
     showColumnPanel.value = false
   }
 }
+const onFilterPanelOutsideClick = (e) => {
+  if (filterPanelRef.value && !filterPanelRef.value.contains(e.target)) {
+    showFilterPanel.value = false
+  }
+}
 
 watch(showColumnPanel, (v) => {
-  if (v) document.addEventListener('mousedown', onPanelOutsideClick)
-  else document.removeEventListener('mousedown', onPanelOutsideClick)
+  if (v) document.addEventListener('mousedown', onColumnPanelOutsideClick)
+  else document.removeEventListener('mousedown', onColumnPanelOutsideClick)
+})
+watch(showFilterPanel, (v) => {
+  if (v) document.addEventListener('mousedown', onFilterPanelOutsideClick)
+  else document.removeEventListener('mousedown', onFilterPanelOutsideClick)
 })
 
 // ─── Expose ───────────────────────────────────────────────────────────────────
@@ -159,8 +166,7 @@ defineExpose({ getSelectedRows, reload, clearCache, exportTable, tableRef })
           ]"
         >
           <IconAdjustmentsHorizontal class="size-4" stroke="1.5" />
-          Filtros
-          <span v-if="activeFilterCount > 0" class="inline-flex items-center justify-center size-5 rounded-full bg-blue-600 text-white text-xs font-bold">{{ activeFilterCount }}</span>
+          Filtros{{ activeFilterCount > 0 ? ` (${activeFilterCount})` : '' }}
         </button>
 
         <slot name="actions" />
@@ -181,20 +187,6 @@ defineExpose({ getSelectedRows, reload, clearCache, exportTable, tableRef })
 
         <TableExportable v-if="showExport" :table-ref="tableRef" :name="name" :columns="columns" />
       </div>
-
-      <!-- Filter panel -->
-      <Transition
-        enter-active-class="transition ease-out duration-150"
-        enter-from-class="opacity-0 -translate-y-2"
-        enter-to-class="opacity-100 translate-y-0"
-        leave-active-class="transition ease-in duration-100"
-        leave-from-class="opacity-100 translate-y-0"
-        leave-to-class="opacity-0 -translate-y-2"
-      >
-        <div v-if="showFilterPanel && hasFilterableColumns" class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
-          <TableFilter v-model="activeFilters" :columns="filtersConfig" />
-        </div>
-      </Transition>
 
       <!-- Contenido: tabla + preview en flex -->
       <div :class="previewRow && previewEnabled ? 'flex items-stretch' : ''">
@@ -243,6 +235,27 @@ defineExpose({ getSelectedRows, reload, clearCache, exportTable, tableRef })
 
       </div>
     </div>
+
+    <!-- Filter panel — outside overflow-hidden so never clipped -->
+    <Transition
+      enter-active-class="transition ease-out duration-150"
+      enter-from-class="opacity-0 translate-y-1 scale-95"
+      enter-to-class="opacity-100 translate-y-0 scale-100"
+      leave-active-class="transition ease-in duration-100"
+      leave-from-class="opacity-100 translate-y-0 scale-100"
+      leave-to-class="opacity-0 translate-y-1 scale-95"
+    >
+      <div
+        v-if="showFilterPanel && hasFilterableColumns"
+        ref="filterPanelRef"
+        class="absolute top-12 left-0 z-50 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl p-3 min-w-64 max-h-96 overflow-y-auto"
+      >
+        <p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3 px-1">
+          Filtros
+        </p>
+        <TableFilter v-model="activeFilters" :columns="filtersConfig" />
+      </div>
+    </Transition>
 
     <!-- Column panel — outside overflow-hidden so never clipped -->
     <Transition
