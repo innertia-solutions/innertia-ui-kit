@@ -318,13 +318,11 @@ const measureText = (text, font) => {
 
 const autoSizeColumn = (header) => {
   const colId = header.column.id
-  const pad = 32 // px-4 on each side
+  const pad = 32
 
-  // Measure header label
   const label = header.column.columnDef.meta?.label ?? header.id
-  let max = measureText(label, '500 12px ui-sans-serif,system-ui,sans-serif') + pad + 20 // +20 for sort icon
+  let max = measureText(label, '500 12px ui-sans-serif,system-ui,sans-serif') + pad + 20
 
-  // Measure all visible data cells
   if (tableBodyRef.value) {
     tableBodyRef.value.querySelectorAll(`td[data-col-id="${colId}"]`).forEach(td => {
       const w = measureText(td.textContent?.trim(), '14px ui-sans-serif,system-ui,sans-serif') + pad
@@ -332,7 +330,7 @@ const autoSizeColumn = (header) => {
     })
   }
 
-  header.column.setSize(Math.ceil(max))
+  table.setColumnSizing(prev => ({ ...prev, [colId]: Math.ceil(max) }))
 }
 
 const onHeaderDragStart = (colId) => { draggedHeaderId = colId }

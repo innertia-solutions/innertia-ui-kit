@@ -137,138 +137,111 @@ defineExpose({ getSelectedRows, reload, clearCache, exportTable, tableRef })
 
 <template>
   <div class="relative" ref="containerRef">
-    <div :class="previewRow && previewEnabled ? 'flex items-stretch gap-3' : ''">
 
-      <!-- Card -->
-      <div
-        class="relative bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm overflow-hidden"
-        :style="previewRow && previewEnabled ? { width: currentRatio + '%', minWidth: 0, flexShrink: 0 } : {}"
-      >
-        <!-- Toolbar -->
-        <div class="flex flex-wrap items-center gap-3 px-4 py-3 border-b border-slate-200 dark:border-slate-700">
-          <!-- Search -->
-          <div v-if="showSearch" class="flex-1 min-w-48">
-            <Forms.Input
-              v-model="search"
-              type="search"
-              :placeholder="searchPlaceholder"
-              :icon-left="IconSearch"
-            />
-          </div>
+    <!-- Card único -->
+    <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm overflow-hidden">
 
-          <!-- Filter toggle -->
-          <button
-            v-if="showFilters && hasFilterableColumns"
-            type="button"
-            @click="showFilterPanel = !showFilterPanel"
-            :class="[
-              'py-1.5 px-3 inline-flex items-center gap-2 text-sm font-medium rounded-lg border transition-colors',
-              showFilterPanel || activeFilterCount > 0
-                ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:border-blue-500 dark:text-blue-300'
-                : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
-            ]"
-          >
-            <IconAdjustmentsHorizontal class="size-4" stroke="1.5" />
-            Filtros
-            <span
-              v-if="activeFilterCount > 0"
-              class="inline-flex items-center justify-center size-5 rounded-full bg-blue-600 text-white text-xs font-bold"
-            >{{ activeFilterCount }}</span>
-          </button>
-
-          <slot name="actions" />
-
-          <!-- Column visibility toggle -->
-          <button
-            type="button"
-            @click="showColumnPanel = !showColumnPanel"
-            :class="[
-              'py-1.5 px-3 inline-flex items-center gap-2 text-sm font-medium rounded-lg border transition-colors',
-              showColumnPanel
-                ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:border-blue-500 dark:text-blue-300'
-                : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
-            ]"
-          >
-            <IconLayoutColumns class="size-4" />
-            Columnas
-          </button>
-
-          <!-- Export -->
-          <TableExportable
-            v-if="showExport"
-            :table-ref="tableRef"
-            :name="name"
-            :columns="columns"
-          />
+      <!-- Toolbar -->
+      <div class="flex flex-wrap items-center gap-3 px-4 py-3 border-b border-slate-200 dark:border-slate-700">
+        <div v-if="showSearch" class="flex-1 min-w-48">
+          <Forms.Input v-model="search" type="search" :placeholder="searchPlaceholder" :icon-left="IconSearch" />
         </div>
 
-        <!-- Filter panel -->
-        <Transition
-          enter-active-class="transition ease-out duration-150"
-          enter-from-class="opacity-0 -translate-y-2"
-          enter-to-class="opacity-100 translate-y-0"
-          leave-active-class="transition ease-in duration-100"
-          leave-from-class="opacity-100 translate-y-0"
-          leave-to-class="opacity-0 -translate-y-2"
+        <button
+          v-if="showFilters && hasFilterableColumns"
+          type="button"
+          @click="showFilterPanel = !showFilterPanel"
+          :class="[
+            'py-1.5 px-3 inline-flex items-center gap-2 text-sm font-medium rounded-lg border transition-colors',
+            showFilterPanel || activeFilterCount > 0
+              ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:border-blue-500 dark:text-blue-300'
+              : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
+          ]"
         >
-          <div
-            v-if="showFilterPanel && hasFilterableColumns"
-            class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50"
-          >
-            <TableFilter v-model="activeFilters" :columns="filtersConfig" />
-          </div>
-        </Transition>
+          <IconAdjustmentsHorizontal class="size-4" stroke="1.5" />
+          Filtros
+          <span v-if="activeFilterCount > 0" class="inline-flex items-center justify-center size-5 rounded-full bg-blue-600 text-white text-xs font-bold">{{ activeFilterCount }}</span>
+        </button>
 
-        <!-- Table -->
-        <Table
-          ref="tableRef"
-          :endpoint="endpoint"
-          :columns="columns"
-          :name="name"
-          :params="mergedParams"
-          :search="search"
-          :checkable="checkable"
-          :cached="cached"
-          :show-reload-button="showReloadButton"
-          :click-row-to-open="clickRowToOpen"
-          :preview-row-id="previewRow?.id ?? null"
-          :preview-mode="!!previewEnabled"
-          @row-click="handleRowClick"
-          @loaded="emit('loaded', $event)"
+        <slot name="actions" />
+
+        <button
+          type="button"
+          @click="showColumnPanel = !showColumnPanel"
+          :class="[
+            'py-1.5 px-3 inline-flex items-center gap-2 text-sm font-medium rounded-lg border transition-colors',
+            showColumnPanel
+              ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:border-blue-500 dark:text-blue-300'
+              : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
+          ]"
         >
-          <template v-for="(_, name) in $slots" #[name]="slotProps">
-            <slot :name="name" v-bind="slotProps ?? {}" />
-          </template>
-        </Table>
+          <IconLayoutColumns class="size-4" />
+          Columnas
+        </button>
+
+        <TableExportable v-if="showExport" :table-ref="tableRef" :name="name" :columns="columns" />
       </div>
 
-      <!-- Resize handle -->
-      <div
-        v-if="previewRow && previewEnabled"
-        class="w-3 flex items-center justify-center cursor-col-resize shrink-0 group"
-        @mousedown="startResize"
-      >
-        <div class="w-px h-12 bg-slate-200 dark:bg-slate-600 rounded-full group-hover:bg-indigo-400 dark:group-hover:bg-indigo-500 transition-colors" />
-      </div>
-
-      <!-- Preview panel -->
+      <!-- Filter panel -->
       <Transition
-        enter-active-class="transition ease-out duration-300"
-        enter-from-class="opacity-0 translate-x-4"
-        enter-to-class="opacity-100 translate-x-0"
-        leave-active-class="transition ease-in duration-200"
-        leave-from-class="opacity-100 translate-x-0"
-        leave-to-class="opacity-0 translate-x-4"
+        enter-active-class="transition ease-out duration-150"
+        enter-from-class="opacity-0 -translate-y-2"
+        enter-to-class="opacity-100 translate-y-0"
+        leave-active-class="transition ease-in duration-100"
+        leave-from-class="opacity-100 translate-y-0"
+        leave-to-class="opacity-0 -translate-y-2"
       >
-        <div
-          v-if="previewRow && previewEnabled"
-          class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-sm overflow-hidden flex flex-col"
-          :style="{ width: (100 - currentRatio) + '%', minWidth: 0, flexShrink: 0 }"
-        >
-          <slot name="preview" :row="previewRow" :close="closePreview" />
+        <div v-if="showFilterPanel && hasFilterableColumns" class="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
+          <TableFilter v-model="activeFilters" :columns="filtersConfig" />
         </div>
       </Transition>
 
+      <!-- Contenido: tabla + preview en flex -->
+      <div :class="previewRow && previewEnabled ? 'flex items-stretch' : ''">
+
+        <!-- Tabla -->
+        <div
+          :style="previewRow && previewEnabled ? { width: currentRatio + '%', flexShrink: 0, minWidth: 0 } : {}"
+        >
+          <Table
+            ref="tableRef"
+            :endpoint="endpoint"
+            :columns="columns"
+            :name="name"
+            :params="mergedParams"
+            :search="search"
+            :checkable="checkable"
+            :cached="cached"
+            :show-reload-button="showReloadButton"
+            :click-row-to-open="clickRowToOpen"
+            :preview-row-id="previewRow?.id ?? null"
+            :preview-mode="!!previewEnabled"
+            @row-click="handleRowClick"
+            @loaded="emit('loaded', $event)"
+          >
+            <template v-for="(_, name) in $slots" #[name]="slotProps">
+              <slot :name="name" v-bind="slotProps ?? {}" />
+            </template>
+          </Table>
+        </div>
+
+        <!-- Divider + preview -->
+        <template v-if="previewRow && previewEnabled">
+          <!-- Resize handle -->
+          <div
+            class="w-1 shrink-0 cursor-col-resize bg-slate-100 dark:bg-slate-700/60 hover:bg-indigo-300 dark:hover:bg-indigo-600 transition-colors"
+            @mousedown="startResize"
+          />
+          <!-- Preview -->
+          <div
+            class="flex flex-col overflow-y-auto border-l border-slate-200 dark:border-slate-700"
+            :style="{ width: (100 - currentRatio) + '%', flexShrink: 0, minWidth: 0 }"
+          >
+            <slot name="preview" :row="previewRow" :close="closePreview" />
+          </div>
+        </template>
+
+      </div>
     </div>
 
     <!-- Column panel — outside overflow-hidden so never clipped -->
