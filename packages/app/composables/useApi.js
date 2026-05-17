@@ -8,12 +8,39 @@ export function useApi() {
 
   const { run, add } = useRequestInterceptors()
 
+  function serializeParams(obj, prefix = '') {
+    const parts = []
+    for (const [key, val] of Object.entries(obj)) {
+      if (val === null || val === undefined) continue
+      const fullKey = prefix ? `${prefix}[${key}]` : key
+      if (Array.isArray(val)) {
+        val.forEach((item, i) => {
+          if (item !== null && typeof item === 'object') {
+            parts.push(...serializeParams(item, `${fullKey}[${i}]`).split('&').filter(Boolean))
+          } else {
+            parts.push(`${encodeURIComponent(`${fullKey}[${i}]`)}=${encodeURIComponent(item)}`)
+          }
+        })
+      } else if (typeof val === 'object') {
+        parts.push(serializeParams(val, fullKey))
+      } else {
+        parts.push(`${encodeURIComponent(fullKey)}=${encodeURIComponent(val)}`)
+      }
+    }
+    return parts.join('&')
+  }
+
   async function makeRequest(method, path, body = null, options = {}) {
     const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' }
     run(headers, options)
 
     const cleanPath = path.startsWith('/') ? path.slice(1) : path
-    const url = `${baseUrl}/${cleanPath}`
+    let url = `${baseUrl}/${cleanPath}`
+
+    if (options.params && Object.keys(options.params).length) {
+      const qs = serializeParams(options.params)
+      if (qs) url += '?' + qs
+    }
 
     const fetchOptions = { method, headers }
     if (body !== null) fetchOptions.body = JSON.stringify(body)

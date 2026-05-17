@@ -154,7 +154,7 @@ const fetchData = async () => {
   isDataFromCache.value = false
 
   try {
-    const res = await api.post(props.endpoint, buildRequestParams())
+    const res = await api.get(props.endpoint, { params: buildRequestParams() })
     if (!res) return
 
     tableData.value = Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : [])
@@ -392,7 +392,7 @@ const exportTable = async (format, exportAllPages, exportFilteredRows, selectedI
 
   try {
     const { blob, headers } = await download(props.endpoint, params, {
-      method: 'POST',
+      method: 'GET',
       onProgress: (p) => toast.update(id, { progress: p, progressLabel: `Descargando... ${p}%` }),
     })
 
