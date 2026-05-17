@@ -154,20 +154,40 @@ defineExpose({ getSelectedRows, reload, clearCache, exportTable, tableRef })
           <Forms.Input v-model="search" type="search" :placeholder="searchPlaceholder" :icon-left="IconSearch" />
         </div>
 
-        <button
-          v-if="showFilters && hasFilterableColumns"
-          type="button"
-          @click="showFilterPanel = !showFilterPanel"
-          :class="[
-            'py-1.5 px-3 inline-flex items-center gap-2 text-sm font-medium rounded-lg border transition-colors',
-            showFilterPanel || activeFilterCount > 0
-              ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:border-blue-500 dark:text-blue-300'
-              : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
-          ]"
-        >
-          <IconAdjustmentsHorizontal class="size-4" stroke="1.5" />
-          Filtros{{ activeFilterCount > 0 ? ` (${activeFilterCount})` : '' }}
-        </button>
+        <div v-if="showFilters && hasFilterableColumns" class="relative">
+          <button
+            type="button"
+            @click="showFilterPanel = !showFilterPanel"
+            :class="[
+              'py-1.5 px-3 inline-flex items-center gap-2 text-sm font-medium rounded-lg border transition-colors',
+              showFilterPanel || activeFilterCount > 0
+                ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:border-blue-500 dark:text-blue-300'
+                : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
+            ]"
+          >
+            <IconAdjustmentsHorizontal class="size-4" stroke="1.5" />
+            Filtros{{ activeFilterCount > 0 ? ` (${activeFilterCount})` : '' }}
+          </button>
+
+          <!-- Filter panel — anchored below button -->
+          <Transition
+            enter-active-class="transition ease-out duration-150"
+            enter-from-class="opacity-0 translate-y-1 scale-95"
+            enter-to-class="opacity-100 translate-y-0 scale-100"
+            leave-active-class="transition ease-in duration-100"
+            leave-from-class="opacity-100 translate-y-0 scale-100"
+            leave-to-class="opacity-0 translate-y-1 scale-95"
+          >
+            <div
+              v-if="showFilterPanel"
+              ref="filterPanelRef"
+              class="absolute top-full left-0 z-50 mt-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl p-3 min-w-56 max-h-96 overflow-y-auto"
+            >
+              <p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3 px-1">Filtros</p>
+              <TableFilter v-model="activeFilters" :columns="filtersConfig" />
+            </div>
+          </Transition>
+        </div>
 
         <slot name="actions" />
 
@@ -194,7 +214,7 @@ defineExpose({ getSelectedRows, reload, clearCache, exportTable, tableRef })
         <!-- Tabla -->
         <div
           class="min-w-0 transition-[width] duration-200 ease-out"
-          :style="previewRow && previewEnabled ? { width: currentRatio + '%', flexShrink: 0 } : {}"
+          :style="previewEnabled ? { width: (previewRow ? currentRatio : 100) + '%', flexShrink: 0 } : {}"
         >
           <Table
             ref="tableRef"
@@ -246,27 +266,6 @@ defineExpose({ getSelectedRows, reload, clearCache, exportTable, tableRef })
 
       </div>
     </div>
-
-    <!-- Filter panel — outside overflow-hidden so never clipped -->
-    <Transition
-      enter-active-class="transition ease-out duration-150"
-      enter-from-class="opacity-0 translate-y-1 scale-95"
-      enter-to-class="opacity-100 translate-y-0 scale-100"
-      leave-active-class="transition ease-in duration-100"
-      leave-from-class="opacity-100 translate-y-0 scale-100"
-      leave-to-class="opacity-0 translate-y-1 scale-95"
-    >
-      <div
-        v-if="showFilterPanel && hasFilterableColumns"
-        ref="filterPanelRef"
-        class="absolute top-12 left-0 z-50 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-2xl p-3 min-w-64 max-h-96 overflow-y-auto"
-      >
-        <p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3 px-1">
-          Filtros
-        </p>
-        <TableFilter v-model="activeFilters" :columns="filtersConfig" />
-      </div>
-    </Transition>
 
     <!-- Column panel — outside overflow-hidden so never clipped -->
     <Transition
