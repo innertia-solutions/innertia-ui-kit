@@ -115,7 +115,9 @@ const userInitial = computed(() =>
     </aside>
 
     <!-- Main content -->
-    <slot />
+    <div class="lg:ps-65 p-3">
+      <slot />
+    </div>
 
   </div>
 </template>
