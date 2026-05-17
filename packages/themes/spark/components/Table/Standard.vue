@@ -231,7 +231,7 @@ defineExpose({ getSelectedRows, reload, clearCache, exportTable, tableRef })
           </Transition>
         </div>
 
-        <slot name="actions" />
+        <slot name="toolbar" />
 
         <button
           type="button"
