@@ -20,6 +20,10 @@ const props = defineProps({
 
 const emit = defineEmits(['row-click', 'loaded'])
 const slots = useSlots()
+const forwardedSlots = computed(() => {
+  const excluded = new Set(['toolbar', 'preview'])
+  return Object.fromEntries(Object.entries(slots).filter(([k]) => !excluded.has(k)))
+})
 
 const search       = ref('')
 const activeFilters = ref({})
@@ -272,7 +276,7 @@ defineExpose({ getSelectedRows, reload, clearCache, exportTable, tableRef })
           @page-change="closePreview"
           @per-page-change="closePreview"
         >
-          <template v-for="(_, name) in $slots" v-if="name !== 'toolbar' && name !== 'preview'" #[name]="slotProps">
+          <template v-for="(_, name) in forwardedSlots" #[name]="slotProps">
             <slot :name="name" v-bind="slotProps ?? {}" />
           </template>
         </Table>
