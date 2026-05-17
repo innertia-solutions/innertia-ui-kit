@@ -114,7 +114,7 @@ const startResize = (e) => {
 }
 
 const onEsc = (e) => { if (e.key === 'Escape' && previewRow.value) closePreview() }
-onMounted(() => {
+onMounted(async () => {
   previewEnabled.value = !!slots.preview
   window.addEventListener('keydown', onEsc)
   // Restore preview from session cache — mark as from-cache to skip enter animation
