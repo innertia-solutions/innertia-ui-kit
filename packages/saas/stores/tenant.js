@@ -8,6 +8,7 @@ export const useTenantStore = defineStore('tenant', {
       oauthProviders: [],
       features: [],
       isActive: false,
+      demo: null,
     },
   }),
 
@@ -29,6 +30,7 @@ export const useTenantStore = defineStore('tenant', {
         oauthProviders: config.oauthProviders ?? [],
         features: config.features ?? [],
         isActive: config.isActive ?? false,
+        demo: config.demo ?? null,
       }
     },
 
@@ -46,7 +48,7 @@ export const useTenantStore = defineStore('tenant', {
     clear() {
       this.tenantId = null
       this.tenantSlug = null
-      this.config = { oauthProviders: [], features: [], isActive: false }
+      this.config = { oauthProviders: [], features: [], isActive: false, demo: null }
     },
   },
 })
