@@ -76,7 +76,7 @@ defineExpose({ reload, rows })
         v-model="search"
         type="search"
         :placeholder="searchPlaceholder"
-        class="block w-full rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white py-2 ps-10 pe-4 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+        class="block w-full rounded-lg border border-card-line bg-card text-foreground py-2 ps-10 pe-4 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
       />
     </div>
 
@@ -85,7 +85,7 @@ defineExpose({ reload, rows })
       <div
         v-for="i in 8"
         :key="i"
-        class="h-16 bg-slate-100 dark:bg-slate-800 rounded-xl animate-pulse"
+        class="h-16 bg-surface rounded-xl animate-pulse"
       />
     </div>
 
@@ -94,7 +94,7 @@ defineExpose({ reload, rows })
       <div
         v-for="row in rows"
         :key="row.id ?? JSON.stringify(row)"
-        class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 hover:border-indigo-300 dark:hover:border-indigo-600 transition-colors cursor-pointer"
+        class="bg-card border border-card-line rounded-xl px-4 py-3 hover:border-indigo-300 dark:hover:border-indigo-600 transition-colors cursor-pointer"
         @click="emit('row-click', row)"
       >
         <slot name="item" :row="row">
@@ -105,14 +105,14 @@ defineExpose({ reload, rows })
               :key="key"
               class="text-sm"
             >
-              <span class="text-slate-400 dark:text-slate-500 text-xs">{{ key }}: </span>
-              <span class="text-slate-800 dark:text-slate-200">{{ val }}</span>
+              <span class="text-muted-foreground text-xs">{{ key }}: </span>
+              <span class="text-foreground">{{ val }}</span>
             </div>
           </div>
         </slot>
       </div>
 
-      <div v-if="rows.length === 0" class="text-center py-12 text-slate-400 dark:text-slate-500 text-sm">
+      <div v-if="rows.length === 0" class="text-center py-12 text-muted-foreground text-sm">
         Sin resultados
       </div>
     </div>

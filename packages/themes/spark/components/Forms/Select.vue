@@ -46,14 +46,14 @@ const handleChange = (e: Event) => {
 <template>
   <div class="space-y-1.5">
     <!-- Label -->
-    <label v-if="label" class="block text-sm font-medium text-slate-700 dark:text-slate-300">
+    <label v-if="label" class="block text-sm font-medium text-foreground">
       {{ label }}
     </label>
 
     <!-- Select (HSSelect) -->
     <ClientOnly>
       <template #fallback>
-        <div class="h-[38px] bg-slate-100 dark:bg-slate-800 animate-pulse rounded-lg" />
+        <div class="h-[38px] bg-surface animate-pulse rounded-lg" />
       </template>
 
       <div :class="['relative', error ? 'select-error' : '']">
@@ -66,9 +66,9 @@ const handleChange = (e: Event) => {
           data-hs-select='{
             "placeholder": "Seleccionar...",
             "toggleTag": "<button type=\"button\" aria-expanded=\"false\"></button>",
-            "toggleClasses": "hs-select-disabled:pointer-events-none hs-select-disabled:opacity-50 relative py-2 ps-4 pe-9 flex gap-x-2 text-nowrap w-full cursor-pointer bg-white border border-slate-200 rounded-lg text-start text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300 dark:focus:outline-hidden dark:focus:ring-1 dark:focus:ring-blue-600",
-            "dropdownClasses": "mt-1 z-50 w-full max-h-72 p-1 space-y-0.5 bg-white border border-slate-200 rounded-lg overflow-hidden overflow-y-auto shadow-lg dark:bg-slate-800 dark:border-slate-700",
-            "optionClasses": "py-2 px-4 w-full text-sm text-slate-800 cursor-pointer hover:bg-slate-100 rounded-lg focus:outline-hidden focus:bg-slate-100 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 dark:focus:bg-slate-700",
+            "toggleClasses": "hs-select-disabled:pointer-events-none hs-select-disabled:opacity-50 relative py-2 ps-4 pe-9 flex gap-x-2 text-nowrap w-full cursor-pointer bg-card border border-card-line rounded-lg text-start text-sm focus:outline-hidden focus:ring-2 focus:ring-blue-500 dark:text-muted-foreground-1 dark:focus:outline-hidden dark:focus:ring-1 dark:focus:ring-blue-600",
+            "dropdownClasses": "mt-1 z-50 w-full max-h-72 p-1 space-y-0.5 bg-dropdown border border-dropdown-line rounded-lg overflow-hidden overflow-y-auto shadow-lg",
+            "optionClasses": "py-2 px-4 w-full text-sm text-foreground cursor-pointer hover:bg-muted-hover rounded-lg focus:outline-hidden focus:bg-muted-hover dark:bg-card",
             "optionTemplate": "<div class=\"flex justify-between items-center w-full\"><span data-title></span><span class=\"hidden hs-selected:block\"><svg class=\"shrink-0 size-3.5 text-blue-600 dark:text-blue-500\" xmlns=\"http://www.w3.org/2000/svg\" width=\"24\" height=\"24\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><polyline points=\"20 6 9 17 4 12\"/></svg></span></div>"
           }'
         >
@@ -88,7 +88,7 @@ const handleChange = (e: Event) => {
     <p v-if="error" class="text-xs text-red-500 dark:text-red-400">{{ error }}</p>
 
     <!-- Hint -->
-    <p v-else-if="hint" class="text-xs text-slate-400 dark:text-slate-500">{{ hint }}</p>
+    <p v-else-if="hint" class="text-xs text-muted-foreground">{{ hint }}</p>
   </div>
 </template>
 

@@ -5,4 +5,9 @@ export default defineNuxtConfig({
   imports: {
     dirs: ['composables'],
   },
+  vite: {
+    optimizeDeps: {
+      include: ['pusher-js'],
+    },
+  },
 })

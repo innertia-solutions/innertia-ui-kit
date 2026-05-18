@@ -390,10 +390,10 @@ defineProps({
     </slot>
 
     <div class="max-w-sm mx-auto">
-      <p class="mt-2 font-medium text-slate-800 dark:text-slate-200">
+      <p class="mt-2 font-medium text-foreground">
         {{ title }}
       </p>
-      <p class="mb-5 text-sm text-slate-500 dark:text-slate-500 text-wrap">
+      <p class="mb-5 text-sm text-muted-foreground text-wrap">
         {{ description }}
       </p>
     </div>
@@ -401,7 +401,7 @@ defineProps({
     <a
       v-if="showAction"
       :href="actionLink"
-      class="py-2 px-3 inline-flex items-center gap-x-2 text-sm font-medium rounded-lg border border-slate-200 bg-white text-slate-800 shadow-2xs hover:bg-slate-50 focus:outline-hidden focus:bg-slate-50 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-700"
+      class="py-2 px-3 inline-flex items-center gap-x-2 text-sm font-medium rounded-lg border border-card-line bg-card text-foreground shadow-2xs hover:bg-muted-hover focus:outline-hidden focus:bg-muted-hover"
     >
       {{ actionText }}
     </a>

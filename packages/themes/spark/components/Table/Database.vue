@@ -89,12 +89,12 @@ defineExpose({ reload })
         v-model="search"
         type="search"
         :placeholder="searchPlaceholder"
-        class="block w-full rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white py-1.5 ps-9 pe-4 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+        class="block w-full rounded-lg border border-card-line bg-card text-foreground py-1.5 ps-9 pe-4 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
       />
     </div>
 
     <!-- Dense table wrapper — override Table's default padding with compact styles -->
-    <div class="overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-xl">
+    <div class="overflow-x-auto border border-card-line rounded-xl">
       <Table
         ref="tableRef"
         :endpoint="endpoint"
@@ -122,7 +122,7 @@ defineExpose({ reload })
               @blur="saveEdit(row, col)"
               @keydown.enter="saveEdit(row, col)"
               @keydown.escape="cancelEdit"
-              class="flex-1 min-w-0 rounded border border-indigo-400 bg-white dark:bg-slate-700 text-slate-900 dark:text-white py-0.5 px-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              class="flex-1 min-w-0 rounded border border-indigo-400 bg-card text-foreground py-0.5 px-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
             >
               <option v-for="opt in col.options" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
             </select>
@@ -134,7 +134,7 @@ defineExpose({ reload })
               @blur="saveEdit(row, col)"
               @keydown.enter="saveEdit(row, col)"
               @keydown.escape="cancelEdit"
-              class="flex-1 min-w-0 rounded border border-indigo-400 bg-white dark:bg-slate-700 text-slate-900 dark:text-white py-0.5 px-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              class="flex-1 min-w-0 rounded border border-indigo-400 bg-card text-foreground py-0.5 px-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
             />
           </div>
 

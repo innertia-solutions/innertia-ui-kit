@@ -331,7 +331,7 @@ const sizeClasses = computed(() => {
 // Computed classes for validation states
 const validationClasses = computed(() => {
   if (props.error) return "border-red-400 dark:border-red-500";
-  return "border-slate-200 dark:border-slate-700";
+  return "border-card-line";
 });
 
 // Combined select classes
@@ -339,7 +339,7 @@ const selectClasses = computed(() => {
   let base, focus, disabled;
 
   base =
-    "relative w-full rounded-lg border bg-white dark:bg-slate-800 transition-colors cursor-pointer text-slate-900 dark:text-white";
+    "relative w-full rounded-lg border bg-card transition-colors cursor-pointer text-foreground";
 
   if (props.multiple && props.tagsMode) {
     base += " px-3 pe-8 min-h-[2.375rem] flex items-center flex-wrap text-nowrap";
@@ -499,7 +499,7 @@ onMounted(() => {
 <template>
   <div class="space-y-1.5">
     <!-- Label -->
-    <label v-if="label" class="block text-sm font-medium text-slate-700 dark:text-slate-300">
+    <label v-if="label" class="block text-sm font-medium text-foreground">
       {{ label }}
     </label>
 
@@ -526,7 +526,7 @@ onMounted(() => {
         <!-- Tags mode for multiple selection -->
         <div v-if="multiple && tagsMode && selectedOptions.length" class="flex flex-wrap items-center gap-1 flex-1">
           <div v-for="option in selectedOptions" :key="option.id"
-            class="flex flex-nowrap items-center relative z-10 bg-white border border-gray-200 rounded-full p-1 m-1 dark:bg-gray-900 dark:border-gray-700">
+            class="flex flex-nowrap items-center relative z-10 bg-card border border-card-line rounded-full p-1 m-1">
             <!-- Avatar/Icon -->
             <div v-if="option.avatar || option.icon" class="size-6 me-1">
               <img v-if="option.avatar" :src="option.avatar" :alt="getOptionLabel(option)"
@@ -535,7 +535,7 @@ onMounted(() => {
             </div>
 
             <!-- Label -->
-            <div class="whitespace-nowrap text-gray-800 dark:text-gray-200 text-sm pl-1.5">
+            <div class="whitespace-nowrap text-foreground text-sm pl-1.5">
               <slot name="tag" :option="option">
                 {{ getOptionLabel(option) }}
               </slot>
@@ -543,7 +543,7 @@ onMounted(() => {
 
             <!-- Remove button -->
             <button type="button" v-if="!disabled" @click.stop="removeTag(option)"
-              class="inline-flex shrink-0 justify-center items-center size-5 ms-2 rounded-full text-gray-800 bg-gray-200 hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 text-sm dark:bg-gray-700/50 dark:hover:bg-gray-700 dark:text-gray-400 cursor-pointer">
+              class="inline-flex shrink-0 justify-center items-center size-5 ms-2 rounded-full text-foreground bg-surface-1 hover:bg-surface-1 focus:outline-none focus:ring-2 focus:ring-gray-400 text-sm cursor-pointer">
               <svg class="shrink-0 size-3" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M18 6 6 18" />
@@ -551,13 +551,13 @@ onMounted(() => {
               </svg>
             </button>
           </div>
-          <span v-if="!selectedOptions.length" class="text-gray-500 dark:text-gray-400 py-2.5 px-2">
+          <span v-if="!selectedOptions.length" class="text-muted-foreground py-2.5 px-2">
             {{ placeholder }}
           </span>
         </div>
 
         <span v-else class="truncate flex-1 text-left pr-10"
-          :class="{ 'text-gray-400 dark:text-slate-500': !selectedOptions.length, 'text-slate-900 dark:text-white': selectedOptions.length }">
+          :class="{ 'text-muted-foreground': !selectedOptions.length, 'text-foreground': selectedOptions.length }">
           <slot name="display" :selectedOptions="selectedOptions" :displayText="displayText">
             {{ displayText }}
           </slot>
@@ -566,7 +566,7 @@ onMounted(() => {
         <!-- Clear button -->
         <button type="button" v-if="clearable && selectedOptions.length && !disabled && !loading"
           @click.stop="clearSelection"
-          class="absolute end-8 top-1/2 -translate-y-1/2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full p-1 transition-colors focus:outline-none focus:ring-1 focus:ring-slate-400">
+          class="absolute end-8 top-1/2 -translate-y-1/2 hover:bg-muted-hover rounded-full p-1 transition-colors focus:outline-none focus:ring-1 focus:ring-slate-400">
           <svg class="size-3.5 text-slate-400" fill="currentColor" viewBox="0 0 20 20">
             <path fill-rule="evenodd"
               d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
@@ -576,7 +576,7 @@ onMounted(() => {
 
         <!-- Dropdown arrow -->
         <div class="absolute top-1/2 end-3 -translate-y-1/2">
-          <svg class="shrink-0 size-3.5 text-gray-500 dark:text-gray-500 transition-transform"
+          <svg class="shrink-0 size-3.5 text-muted-foreground transition-transform"
             :class="{ 'rotate-180': isOpen }" xmlns="http://www.w3.org/2000/svg" width="24" height="24"
             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
             stroke-linejoin="round">
@@ -592,12 +592,12 @@ onMounted(() => {
       enter-to-class="transform opacity-100 scale-100" leave-active-class="transition ease-in duration-75"
       leave-from-class="transform opacity-100 scale-100" leave-to-class="transform opacity-0 scale-95">
       <div v-show="isOpen" ref="optionsListRef" @scroll="handleScroll"
-        class="absolute z-50 w-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl max-h-60 overflow-auto">
+        class="absolute z-50 w-full mt-1 bg-dropdown border border-dropdown-line rounded-xl shadow-xl max-h-60 overflow-auto">
         <!-- Search input -->
-        <div v-if="searchable" class="p-2 border-b border-slate-100 dark:border-slate-700/50 relative">
+        <div v-if="searchable" class="p-2 border-b border-card-line relative">
           <input type="text" :value="searchQuery" :placeholder="searchPlaceholder" @input="handleSearchInput"
             @keydown.enter.prevent
-            class="w-full px-3 py-2.5 pr-8 border border-gray-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-0 focus:border-gray-400 dark:bg-slate-700 dark:text-white text-sm transition-colors" />
+            class="w-full px-3 py-2.5 pr-8 border border-card-line rounded-lg focus:outline-none focus:ring-0 focus:border-gray-400 dark:bg-surface dark:text-white text-sm transition-colors" />
           <button type="button" v-if="searchQuery" @click.prevent="clearSearch"
             class="absolute top-1/2 right-4 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
             <svg class="size-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -607,7 +607,7 @@ onMounted(() => {
         </div>
 
         <!-- Initial Loader if list is empty -->
-        <div v-if="isFetching && filteredOptions.length === 0" class="px-3 py-6 text-center text-slate-500">
+        <div v-if="isFetching && filteredOptions.length === 0" class="px-3 py-6 text-center text-muted-foreground">
           <div class="animate-spin rounded-full h-5 w-5 border-b-2 border-current mx-auto mb-2"></div>
           <span class="text-sm">Buscando...</span>
         </div>
@@ -615,9 +615,9 @@ onMounted(() => {
         <!-- Empty option -->
         <button type="button" v-if="allowEmpty && !multiple && !isFetching && filteredOptions.length" @click="
           selectOption({ id: '__empty__', value: null, label: 'Ninguno' })
-          " class="w-full px-3 py-2 text-left hover:bg-gray-100 dark:hover:bg-gray-700 text-sm">
+          " class="w-full px-3 py-2 text-left hover:bg-muted-hover text-sm">
           <slot name="empty-option">
-            <span class="text-gray-500 dark:text-gray-400">Ninguno</span>
+            <span class="text-muted-foreground">Ninguno</span>
           </slot>
         </button>
 
@@ -625,11 +625,11 @@ onMounted(() => {
         <div v-if="filteredOptions.length">
           <button type="button" v-for="(option, index) in filteredOptions" :key="option.id"
             @click="selectOption(option)" :class="[
-              'w-full px-3 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center text-sm',
+              'w-full px-3 py-2 text-left hover:bg-muted-hover flex items-center text-sm',
               {
-                'bg-slate-50 dark:bg-slate-700/50': isOptionSelected(option),
+                'bg-muted': isOptionSelected(option),
                 'opacity-50 cursor-not-allowed': option.disabled,
-                'bg-slate-100 dark:bg-slate-700': focusedIndex === index,
+                'bg-surface': focusedIndex === index,
               },
             ]" :disabled="option.disabled">
             <!-- Multiple selection checkbox -->
@@ -638,7 +638,7 @@ onMounted(() => {
                 'w-4 h-4 rounded-lg border-2 flex items-center justify-center',
                 isOptionSelected(option)
                   ? 'bg-slate-600 border-slate-600 text-white'
-                  : 'border-slate-300 dark:border-slate-600',
+                  : 'border-card-line',
               ]">
                 <svg v-if="isOptionSelected(option)" class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                   <path fill-rule="evenodd"
@@ -660,11 +660,11 @@ onMounted(() => {
               <div class="flex-1">
                 <slot name="option" :option="option" :selected="isOptionSelected(option)">
                   <div>
-                    <div class="font-bold text-slate-800 dark:text-slate-200">
+                    <div class="font-bold text-foreground">
                       {{ getOptionLabel(option) }}
                     </div>
                     <div v-if="getOptionDescription(option)"
-                      class="text-[10px] text-slate-400 uppercase tracking-tight">
+                      class="text-[10px] text-muted-foreground uppercase tracking-tight">
                       {{ getOptionDescription(option) }}
                     </div>
                   </div>
@@ -684,33 +684,33 @@ onMounted(() => {
         </div>
 
         <!-- Infinite Scroll Mini Loader -->
-        <div v-if="isFetching && filteredOptions.length > 0" class="py-3 text-center border-t border-slate-100 dark:border-slate-700/50">
+        <div v-if="isFetching && filteredOptions.length > 0" class="py-3 text-center border-t border-card-line">
           <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-slate-400 mx-auto"></div>
         </div>
 
         <!-- End of list marker -->
-        <div v-else-if="!hasMorePages && filteredOptions.length > 0" class="py-2 text-center text-[10px] text-slate-400 uppercase tracking-widest border-t border-slate-100 dark:border-slate-700/50">
+        <div v-else-if="!hasMorePages && filteredOptions.length > 0" class="py-2 text-center text-[10px] text-muted-foreground uppercase tracking-widest border-t border-card-line">
           No hay más opciones
         </div>
 
         <!-- No options message -->
         <div v-else-if="!isFetching && searchQuery && filteredOptions.length === 0"
-          class="px-3 py-4 text-center text-gray-500 dark:text-gray-400 text-sm">
+          class="px-3 py-4 text-center text-muted-foreground text-sm">
           <slot name="no-options"> No se encontraron opciones </slot>
         </div>
 
         <!-- No data message -->
         <div v-else-if="!serverOptions.length && !isFetching" class="px-3 py-8 text-center">
           <div class="flex flex-col items-center gap-y-2">
-            <div class="size-10 rounded-full bg-slate-50 dark:bg-slate-900/50 flex items-center justify-center">
-              <svg class="size-5 text-slate-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+            <div class="size-10 rounded-full bg-muted flex items-center justify-center">
+              <svg class="size-5 text-muted-foreground-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
                 stroke-width="1.5" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round"
                   d="M20.25 7.5l-.625 10.632a2.25 2.25 0 01-2.247 2.118H6.622a2.25 2.25 0 01-2.247-2.118L3.75 7.5M10 11.25h4M3.375 7.5h17.25c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125z" />
               </svg>
             </div>
-            <p class="text-sm font-bold text-slate-400">No hay datos disponibles</p>
-            <p class="text-[10px] text-slate-300 uppercase font-black tracking-widest">Intenta refrescar la página</p>
+            <p class="text-sm font-bold text-muted-foreground">No hay datos disponibles</p>
+            <p class="text-[10px] text-muted-foreground-2 uppercase font-black tracking-widest">Intenta refrescar la página</p>
           </div>
         </div>
       </div>
@@ -721,6 +721,6 @@ onMounted(() => {
 
     <!-- Error / Hint -->
     <p v-if="error" class="text-xs text-red-500 dark:text-red-400">{{ error }}</p>
-    <p v-else-if="hint" class="text-xs text-slate-400 dark:text-slate-500">{{ hint }}</p>
+    <p v-else-if="hint" class="text-xs text-muted-foreground">{{ hint }}</p>
   </div>
 </template>

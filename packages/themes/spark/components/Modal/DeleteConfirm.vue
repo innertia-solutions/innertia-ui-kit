@@ -26,7 +26,7 @@ const close = () => {
     :backdrop-dismiss="!loading"
     @update:model-value="$emit('update:modelValue', $event)"
   >
-    <p class="text-sm text-slate-500 dark:text-slate-400">{{ message }}</p>
+    <p class="text-sm text-muted-foreground">{{ message }}</p>
 
     <div class="flex justify-end gap-2 mt-5">
       <AppButton

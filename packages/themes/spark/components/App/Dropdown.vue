@@ -91,8 +91,8 @@ const triggerSeverityClasses = computed(() => {
       ? "border-blue-600 text-blue-600 hover:bg-blue-50 dark:border-blue-500 dark:text-blue-500 dark:hover:bg-blue-900/20"
       : "border-transparent bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-700",
     secondary: props.triggerOutline
-      ? "border-gray-300 text-gray-700 hover:bg-gray-100 dark:border-gray-400 dark:text-gray-300 dark:hover:bg-gray-700/50"
-      : "border-transparent bg-gray-600 text-white hover:bg-gray-700 dark:bg-gray-600 dark:hover:bg-gray-700",
+      ? "border-card-line text-foreground hover:bg-muted-hover"
+      : "border-transparent bg-muted text-foreground hover:bg-muted-hover",
     success: props.triggerOutline
       ? "border-green-600 text-green-600 hover:bg-green-50 dark:border-green-500 dark:text-green-500 dark:hover:bg-green-900/20"
       : "border-transparent bg-green-600 text-white hover:bg-green-700 dark:bg-green-600 dark:hover:bg-green-700",
@@ -164,7 +164,7 @@ const getItemButtonClasses = (item) => {
 
   const severityClasses = {
     default:
-      "text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-300",
+      "text-foreground hover:bg-muted-hover",
     primary:
       "text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20",
     success:
@@ -231,7 +231,7 @@ const handleItemClick = (item, event) => {
 
     <!-- Dropdown menu -->
     <div
-      class="hs-dropdown-menu transition-[opacity,margin] duration hs-dropdown-open:opacity-100 opacity-0 hidden min-w-40 bg-white shadow-md rounded-lg p-1 space-y-0.5 mt-2 dark:bg-gray-800 dark:border dark:border-gray-700 dark:divide-gray-700 z-50 border border-gray-200"
+      class="hs-dropdown-menu transition-[opacity,margin] duration hs-dropdown-open:opacity-100 opacity-0 hidden min-w-40 bg-dropdown shadow-md rounded-lg p-1 space-y-0.5 mt-2 dark:border dark:border-dropdown-line dark:divide-card-line z-50 border border-dropdown-line"
       :class="[menuClass, placementClass]"
       role="menu"
       :aria-orientation="'vertical'"
@@ -265,7 +265,7 @@ const handleItemClick = (item, event) => {
           <!-- Link if type is link or has href -->
           <a
             v-else
-            class="flex items-center gap-x-3.5 py-2 px-3 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800 text-gray-800 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-300"
+            class="flex items-center gap-x-3.5 py-2 px-3 rounded-lg text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 text-foreground hover:bg-muted-hover"
             :class="item.class"
             :href="item.href || '#'"
             @click="handleItemClick(item, $event)"

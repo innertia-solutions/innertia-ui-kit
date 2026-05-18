@@ -1,5 +1,13 @@
 @import "tailwindcss";
 @import "preline/variants.css";
+@import "./css/themes/harvest.css";
+@import "./css/themes/retro.css";
+@import "./css/themes/ocean.css";
+@import "./css/themes/autumn.css";
+@import "./css/themes/moon.css";
+@import "./css/themes/bubblegum.css";
+@import "./css/themes/olive.css";
+@import "./css/themes/cashmere.css";
 @plugin "@tailwindcss/forms";
 @plugin "@tailwindcss/aspect-ratio";
 

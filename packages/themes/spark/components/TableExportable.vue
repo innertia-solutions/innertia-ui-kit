@@ -1,205 +1,170 @@
 <script setup>
 import {
   IconFileTypeXls,
-  IconCodeDots,
-  IconFileTypePdf,
   IconFileTypeCsv,
+  IconFileTypePdf,
+  IconCodeDots,
   IconDownload,
 } from '@tabler/icons-vue'
 
-// Modal with format selector, pre-filled filename, columns checkboxes
 const props = defineProps({
   tableRef: { type: Object, default: null },
-  name: { type: String, default: 'export' },
-  columns: { type: Array, default: () => [] }, // [{ key, label }]
+  name:     { type: String, default: 'export' },
+  columns:  { type: Array,  default: () => [] },
 })
 
-const isOpen = ref(false)
-const format = ref('xlsx')
-const filename = ref(props.name)
+const isOpen          = ref(false)
+const format          = ref('xlsx')
+const filename        = ref(props.name)
 const selectedColumns = ref([])
 
-watch(() => props.columns, (cols) => {
-  selectedColumns.value = cols.map(c => c.key)
-}, { immediate: true })
-
+watch(() => props.columns, (cols) => { selectedColumns.value = cols.map(c => c.key) }, { immediate: true })
 watch(() => props.name, (v) => { filename.value = v })
-
-const formats = [
-  { value: 'xlsx', label: 'Excel', icon: 'xlsx' },
-  { value: 'csv', label: 'CSV', icon: 'csv' },
-  { value: 'pdf', label: 'PDF', icon: 'pdf' },
-  { value: 'json', label: 'JSON', icon: 'json' },
-]
 
 const toggleColumn = (key) => {
   const idx = selectedColumns.value.indexOf(key)
   if (idx >= 0) selectedColumns.value.splice(idx, 1)
   else selectedColumns.value.push(key)
 }
-
-const toggleAll = () => {
-  if (selectedColumns.value.length === props.columns.length)
-    selectedColumns.value = []
-  else
-    selectedColumns.value = props.columns.map(c => c.key)
+const allSelected   = computed(() => selectedColumns.value.length === props.columns.length)
+const toggleAll     = () => {
+  selectedColumns.value = allSelected.value ? [] : props.columns.map(c => c.key)
 }
 
-const allSelected = computed(() => selectedColumns.value.length === props.columns.length)
-const indeterminate = computed(() => selectedColumns.value.length > 0 && !allSelected.value)
+const formats = [
+  { value: 'xlsx', label: 'Excel' },
+  { value: 'csv',  label: 'CSV'   },
+  { value: 'pdf',  label: 'PDF'   },
+  { value: 'json', label: 'JSON'  },
+]
 
 const doExport = () => {
-  if (props.tableRef) {
-    props.tableRef.exportTable(format.value, true, true)
-  }
+  props.tableRef?.exportTable(format.value, true, true, selectedColumns.value)
   isOpen.value = false
 }
 
-const open = () => { isOpen.value = true }
+const panelRef  = ref(null)
+const triggerRef = ref(null)
 
-defineExpose({ open })
+const onOutsideClick = (e) => {
+  if (
+    panelRef.value && !panelRef.value.contains(e.target) &&
+    triggerRef.value && !triggerRef.value.contains(e.target)
+  ) {
+    isOpen.value = false
+  }
+}
+
+watch(isOpen, (v) => {
+  if (v) document.addEventListener('mousedown', onOutsideClick)
+  else   document.removeEventListener('mousedown', onOutsideClick)
+})
+
+defineExpose({ open: () => { isOpen.value = true } })
 </script>
 
 <template>
-  <div>
+  <div class="relative">
     <button
+      ref="triggerRef"
       type="button"
-      @click="isOpen = true"
-      class="py-1.5 sm:py-2 px-2.5 inline-flex items-center gap-x-1.5 text-sm font-medium rounded-lg border border-slate-200 bg-white text-slate-800 shadow-2xs hover:bg-slate-50 disabled:opacity-50 disabled:pointer-events-none focus:outline-hidden dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-700"
+      @click="isOpen = !isOpen"
+      :class="[
+        'py-1.5 px-3 inline-flex items-center gap-2 text-sm font-medium rounded-lg border transition-colors',
+        isOpen
+          ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:border-blue-500 dark:text-blue-300'
+          : 'border-card-line bg-card text-muted-foreground-1 hover:bg-muted-hover'
+      ]"
     >
-      <IconDownload class="shrink-0 size-4" stroke="1.5" />
+      <IconDownload class="size-4" stroke="1.5" />
       Exportar
     </button>
 
-    <!-- Modal -->
-    <Teleport to="body">
-      <Transition
-        enter-active-class="transition ease-out duration-200"
-        enter-from-class="opacity-0"
-        enter-to-class="opacity-100"
-        leave-active-class="transition ease-in duration-150"
-        leave-from-class="opacity-100"
-        leave-to-class="opacity-0"
+    <Transition
+      enter-active-class="transition ease-out duration-150"
+      enter-from-class="opacity-0 translate-y-1 scale-95"
+      enter-to-class="opacity-100 translate-y-0 scale-100"
+      leave-active-class="transition ease-in duration-100"
+      leave-from-class="opacity-100 translate-y-0 scale-100"
+      leave-to-class="opacity-0 translate-y-1 scale-95"
+    >
+      <div
+        v-if="isOpen"
+        ref="panelRef"
+        class="absolute top-full right-0 z-50 mt-1.5 bg-dropdown border border-dropdown-line rounded-xl shadow-2xl p-3 w-64"
       >
-        <div
-          v-if="isOpen"
-          class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm"
-          @click.self="isOpen = false"
-        >
-          <Transition
-            enter-active-class="transition ease-out duration-200"
-            enter-from-class="opacity-0 scale-95"
-            enter-to-class="opacity-100 scale-100"
+        <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-3 px-1">Exportar</p>
+
+        <!-- Format -->
+        <div class="grid grid-cols-4 gap-1.5 mb-3">
+          <button
+            v-for="f in formats"
+            :key="f.value"
+            type="button"
+            @click="format = f.value"
+            :class="[
+              'flex flex-col items-center gap-1 py-2 rounded-lg border text-xs font-medium transition-colors',
+              format === f.value
+                ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:border-blue-500 dark:text-blue-300'
+                : 'border-card-line text-muted-foreground-1 hover:bg-muted-hover'
+            ]"
           >
-            <div
-              v-if="isOpen"
-              class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md border border-slate-200 dark:border-slate-700"
-            >
-              <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-700">
-                <h3 class="font-semibold text-slate-800 dark:text-slate-100">Exportar tabla</h3>
-                <button
-                  type="button"
-                  @click="isOpen = false"
-                  class="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-                >
-                  <svg class="size-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                  </svg>
-                </button>
-              </div>
-
-              <div class="px-6 py-5 space-y-5">
-                <!-- Format selector -->
-                <div>
-                  <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Formato</p>
-                  <div class="grid grid-cols-4 gap-2">
-                    <button
-                      v-for="f in formats"
-                      :key="f.value"
-                      type="button"
-                      @click="format = f.value"
-                      :class="[
-                        'flex flex-col items-center gap-1.5 p-3 rounded-xl border text-sm font-medium transition-colors',
-                        format === f.value
-                          ? 'border-indigo-500 bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:border-indigo-500 dark:text-indigo-300'
-                          : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'
-                      ]"
-                    >
-                      <IconFileTypeXls v-if="f.value === 'xlsx'" class="size-5" stroke="1.5" />
-                      <IconFileTypeCsv v-else-if="f.value === 'csv'" class="size-5" stroke="1.5" />
-                      <IconFileTypePdf v-else-if="f.value === 'pdf'" class="size-5" stroke="1.5" />
-                      <IconCodeDots v-else class="size-5" stroke="1.5" />
-                      {{ f.label }}
-                    </button>
-                  </div>
-                </div>
-
-                <!-- Filename -->
-                <div>
-                  <label class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-2">
-                    Nombre de archivo
-                  </label>
-                  <div class="flex items-center gap-2">
-                    <input
-                      v-model="filename"
-                      type="text"
-                      class="flex-1 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-900 dark:text-white py-2 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                    />
-                    <span class="text-sm text-slate-400">.{{ format }}</span>
-                  </div>
-                </div>
-
-                <!-- Columns -->
-                <div v-if="columns.length > 0">
-                  <div class="flex items-center justify-between mb-2">
-                    <p class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Columnas</p>
-                    <button
-                      type="button"
-                      @click="toggleAll"
-                      class="text-xs text-indigo-600 dark:text-indigo-400 hover:underline"
-                    >
-                      {{ allSelected ? 'Deseleccionar todas' : 'Seleccionar todas' }}
-                    </button>
-                  </div>
-                  <div class="grid grid-cols-2 gap-1.5 max-h-40 overflow-y-auto pr-1">
-                    <label
-                      v-for="col in columns"
-                      :key="col.key"
-                      class="flex items-center gap-2 py-1.5 px-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer"
-                    >
-                      <input
-                        type="checkbox"
-                        :checked="selectedColumns.includes(col.key)"
-                        @change="toggleColumn(col.key)"
-                        class="rounded border-gray-300 dark:bg-slate-700 dark:border-slate-600 text-indigo-600"
-                      />
-                      <span class="text-sm text-slate-700 dark:text-slate-200 truncate">{{ col.label }}</span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-
-              <div class="flex justify-end gap-2 px-6 py-4 border-t border-slate-100 dark:border-slate-700">
-                <button
-                  type="button"
-                  @click="isOpen = false"
-                  class="py-2 px-4 text-sm font-medium rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="button"
-                  @click="doExport"
-                  class="py-2 px-4 text-sm font-medium rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors inline-flex items-center gap-2"
-                >
-                  <IconDownload class="size-4" stroke="1.5" />
-                  Exportar
-                </button>
-              </div>
-            </div>
-          </Transition>
+            <IconFileTypeXls v-if="f.value === 'xlsx'" class="size-4" stroke="1.5" />
+            <IconFileTypeCsv v-else-if="f.value === 'csv'" class="size-4" stroke="1.5" />
+            <IconFileTypePdf v-else-if="f.value === 'pdf'" class="size-4" stroke="1.5" />
+            <IconCodeDots    v-else                         class="size-4" stroke="1.5" />
+            {{ f.label }}
+          </button>
         </div>
-      </Transition>
-    </Teleport>
+
+        <!-- Filename -->
+        <div class="mb-3 px-1">
+          <label class="text-[10px] font-bold text-muted-foreground uppercase tracking-widest block mb-1.5">Archivo</label>
+          <div class="flex items-center gap-1.5">
+            <input
+              v-model="filename"
+              type="text"
+              class="flex-1 rounded-lg border border-card-line bg-card text-foreground py-1.5 px-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 min-w-0"
+            />
+            <span class="text-xs text-muted-foreground shrink-0">.{{ format }}</span>
+          </div>
+        </div>
+
+        <!-- Columns -->
+        <div v-if="columns.length > 0" class="mb-3 px-1">
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Columnas</label>
+            <button type="button" @click="toggleAll" class="text-[10px] text-blue-600 dark:text-blue-400 hover:underline">
+              {{ allSelected ? 'Ninguna' : 'Todas' }}
+            </button>
+          </div>
+          <div class="max-h-32 overflow-y-auto space-y-0.5">
+            <label
+              v-for="col in columns"
+              :key="col.key"
+              class="flex items-center gap-2 py-1 px-1.5 rounded-lg hover:bg-muted-hover cursor-pointer"
+            >
+              <input
+                type="checkbox"
+                :checked="selectedColumns.includes(col.key)"
+                @change="toggleColumn(col.key)"
+                class="rounded border-card-line bg-surface shrink-0 cursor-pointer"
+              />
+              <span class="text-xs text-foreground truncate">{{ col.label }}</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Export button -->
+        <button
+          type="button"
+          @click="doExport"
+          class="w-full py-1.5 px-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors inline-flex items-center justify-center gap-2"
+        >
+          <IconDownload class="size-4" stroke="1.5" />
+          Exportar
+        </button>
+      </div>
+    </Transition>
   </div>
 </template>

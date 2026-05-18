@@ -35,7 +35,7 @@ defineExpose({ reload, clearCache })
         v-model="search"
         type="search"
         :placeholder="searchPlaceholder"
-        class="block w-full rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white py-2 ps-10 pe-4 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+        class="block w-full rounded-lg border border-card-line bg-card text-foreground py-2 ps-10 pe-4 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
       />
     </div>
 

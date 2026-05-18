@@ -484,7 +484,7 @@ defineExpose({
     <!-- Table view -->
     <div v-if="!isGridView" class="overflow-x-auto relative">
       <table
-        class="relative divide-y divide-gray-200 dark:divide-slate-700"
+        class="relative divide-y divide-card-line"
         :style="{ tableLayout: 'fixed', width: table.getTotalSize() + 'px', minWidth: '100%' }"
       >
         <colgroup>
@@ -494,11 +494,11 @@ defineExpose({
             :style="{ width: col.getSize() + 'px' }"
           >
         </colgroup>
-        <thead class="relative z-20 bg-white dark:bg-slate-800">
+        <thead class="relative z-20 bg-card">
           <template v-for="headerGroup in table.getHeaderGroups()" :key="headerGroup.id">
             <!-- Main header row -->
             <tr
-              class="divide-x divide-slate-200 dark:divide-slate-700"
+              class="divide-x divide-card-line"
             >
               <th
                 v-for="header in headerGroup.headers"
@@ -524,12 +524,12 @@ defineExpose({
                     :checked="table.getIsAllRowsSelected()"
                     :indeterminate="table.getIsSomeRowsSelected()"
                     @change="table.getToggleAllRowsSelectedHandler()($event)"
-                    class="mx-2 shrink-0 border-gray-300 rounded-sm text-blue-900 focus:ring-0 focus:ring-offset-0 dark:bg-slate-800 dark:border-slate-600"
+                    class="mx-2 shrink-0 border-card-line rounded-sm text-blue-900 focus:ring-0 focus:ring-offset-0 dark:bg-card"
                   />
                 </template>
                 <!-- Regular column header -->
                 <template v-else>
-                  <div class="px-4 py-3 flex items-center gap-x-1 text-xs font-medium text-slate-500 dark:text-slate-400 w-full">
+                  <div class="px-4 py-3 flex items-center gap-x-1 text-xs font-medium text-muted-foreground w-full">
                     {{ header.column.columnDef.meta?.label ?? header.id }}
                     <span v-if="header.column.getCanSort()">
                       <IconSelector v-if="!header.column.getIsSorted()" class="size-4 opacity-40" />
@@ -553,7 +553,7 @@ defineExpose({
                       class="h-4 w-px transition-all"
                       :class="header.column.getIsResizing()
                         ? 'bg-indigo-400 dark:bg-indigo-500 !w-0.5'
-                        : 'bg-slate-200 dark:bg-slate-600 group-hover/rz:bg-indigo-300 dark:group-hover/rz:bg-indigo-600 group-hover/rz:w-0.5'"
+                        : 'bg-surface-1 group-hover/rz:bg-indigo-300 dark:group-hover/rz:bg-indigo-600 group-hover/rz:w-0.5'"
                     />
                   </div>
                 </template>
@@ -563,7 +563,7 @@ defineExpose({
             <!-- Column filter row -->
             <tr
               v-if="hasFilterableColumns"
-              class="divide-x divide-gray-200 dark:divide-slate-700 border-b border-gray-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50"
+              class="divide-x divide-card-line border-b border-card-line bg-muted/50"
             >
               <th
                 v-for="header in headerGroup.headers"
@@ -575,20 +575,20 @@ defineExpose({
                   :value="header.column.getFilterValue() ?? ''"
                   @input="(e) => header.column.setFilterValue(e.target.value || undefined)"
                   :placeholder="`Filtrar ${header.column.columnDef.meta?.label ?? ''}...`"
-                  class="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-600 dark:text-slate-300 px-2.5 py-1 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 dark:focus:border-indigo-500 outline-none transition-all"
+                  class="w-full bg-card border border-card-line rounded-lg text-xs text-muted-foreground-1 px-2.5 py-1 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 dark:focus:border-indigo-500 outline-none transition-all"
                 />
               </th>
             </tr>
           </template>
         </thead>
 
-        <tbody ref="tableBodyRef" class="divide-y divide-gray-200 dark:divide-slate-700">
+        <tbody ref="tableBodyRef" class="divide-y divide-card-line">
           <!-- Loading skeleton rows -->
           <tr
             v-if="loading"
             v-for="(_, i) in skeletonRows"
             :key="'sk-' + i"
-            class="animate-pulse divide-x divide-gray-200 dark:divide-slate-700 bg-white dark:bg-slate-800"
+            class="animate-pulse divide-x divide-card-line bg-card"
           >
             <td
               v-for="header in (table.getHeaderGroups()[0]?.headers ?? [])"
@@ -596,8 +596,8 @@ defineExpose({
               :class="header.id === 'select' ? 'text-center w-12' : 'px-4'"
               :style="{ height: lastRowHeight + 'px' }"
             >
-              <div v-if="header.id === 'select'" class="w-4 h-4 bg-gray-300 dark:bg-slate-600 rounded mx-auto"></div>
-              <div v-else class="h-4 w-[50%] rounded bg-gray-200 dark:bg-slate-600"></div>
+              <div v-if="header.id === 'select'" class="w-4 h-4 bg-surface-1 rounded mx-auto"></div>
+              <div v-else class="h-4 w-[50%] rounded bg-surface-1"></div>
             </td>
           </tr>
 
@@ -606,7 +606,7 @@ defineExpose({
             v-if="loading && skeletonRows.length < pagination.pageSize"
             v-for="i in (pagination.pageSize - skeletonRows.length)"
             :key="'lf-' + i"
-            class="divide-x divide-gray-200 dark:divide-slate-700 bg-white dark:bg-slate-800"
+            class="divide-x divide-card-line bg-card"
           >
             <td
               v-for="header in (table.getHeaderGroups()[0]?.headers ?? [])"
@@ -620,7 +620,7 @@ defineExpose({
             v-if="!loading && tableData.length === 0"
             v-for="i in pagination.pageSize"
             :key="'esk-' + i"
-            class="divide-x divide-gray-200 dark:divide-slate-700 bg-white dark:bg-slate-800"
+            class="divide-x divide-card-line bg-card"
           >
             <td
               v-for="header in (table.getHeaderGroups()[0]?.headers ?? [])"
@@ -638,7 +638,7 @@ defineExpose({
             @click="(e) => handleRowClick(row, e)"
             @keydown="(e) => handleRowKeydown(row, e)"
             :tabindex="isRowClickEnabled ? 0 : undefined"
-            class="divide-x divide-gray-200 dark:divide-slate-700 bg-white hover:bg-gray-50 dark:bg-slate-800 dark:hover:bg-slate-900 transition-colors"
+            class="divide-x divide-card-line bg-card hover:bg-layer-hover transition-colors"
             :class="{
               'cursor-pointer': isRowClickEnabled,
               'bg-indigo-50/40 dark:bg-indigo-900/10 hover:bg-indigo-50/60': row.getIsSelected(),
@@ -652,7 +652,7 @@ defineExpose({
               :class="[
                 cell.column.id === 'select'
                   ? 'text-center w-12'
-                  : 'px-4 py-3 text-sm text-slate-600 dark:text-slate-300',
+                  : 'px-4 py-3 text-sm text-muted-foreground-1',
                 cell.column.id !== 'select' ? cell.column.columnDef.meta?.class ?? '' : '',
               ]"
             >
@@ -664,7 +664,7 @@ defineExpose({
                     :checked="row.getIsSelected()"
                     :disabled="!row.getCanSelect()"
                     @change="row.getToggleSelectedHandler()($event)"
-                    class="rounded border-gray-300 focus:ring-0 focus:ring-offset-0 dark:bg-slate-800 dark:border-slate-600"
+                    class="rounded border-card-line focus:ring-0 focus:ring-offset-0 dark:bg-card"
                   />
                 </div>
               </template>
@@ -682,7 +682,7 @@ defineExpose({
             v-if="!loading && tableData.length > 0 && tableData.length < pagination.pageSize"
             v-for="i in (pagination.pageSize - tableData.length)"
             :key="'fill-' + i"
-            class="divide-x divide-gray-200 dark:divide-slate-700 bg-white dark:bg-slate-800"
+            class="divide-x divide-card-line bg-card"
           >
             <td
               v-for="header in (table.getHeaderGroups()[0]?.headers ?? [])"
@@ -696,19 +696,19 @@ defineExpose({
       <!-- Empty state overlays -->
       <div
         v-if="!loading && tableData.length === 0 && !search && !columnFilters.length"
-        class="absolute inset-0 z-10 pointer-events-none flex items-center justify-center backdrop-blur-sm bg-white/60 dark:bg-slate-800/60 rounded-xl"
+        class="absolute inset-0 z-10 pointer-events-none flex items-center justify-center backdrop-blur-sm bg-card/60 rounded-xl"
       >
         <slot name="empty">
-          <p class="text-slate-400 dark:text-slate-500 text-lg font-medium italic">No hay registros</p>
+          <p class="text-muted-foreground text-lg font-medium italic">No hay registros</p>
         </slot>
       </div>
 
       <div
         v-if="!loading && tableData.length === 0 && (search || columnFilters.length)"
-        class="absolute inset-0 z-10 pointer-events-none flex items-center justify-center backdrop-blur-sm bg-white/60 dark:bg-slate-800/60 rounded-xl"
+        class="absolute inset-0 z-10 pointer-events-none flex items-center justify-center backdrop-blur-sm bg-card/60 rounded-xl"
       >
         <slot name="empty-search">
-          <p class="text-slate-400 dark:text-slate-500 text-lg font-medium italic">No hay registros en la búsqueda</p>
+          <p class="text-muted-foreground text-lg font-medium italic">No hay registros en la búsqueda</p>
         </slot>
       </div>
     </div>
@@ -718,11 +718,11 @@ defineExpose({
       <div v-if="loading" :class="gridClass">
         <div v-for="(_, i) in skeletonRows" :key="'gsk-' + i" class="animate-pulse">
           <slot name="grid-skeleton">
-            <div class="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-4">
+            <div class="bg-card rounded-lg border border-card-line p-4">
               <div class="space-y-3">
-                <div class="h-4 bg-gray-200 dark:bg-slate-600 rounded w-3/4"></div>
-                <div class="h-4 bg-gray-200 dark:bg-slate-600 rounded w-1/2"></div>
-                <div class="h-6 bg-gray-200 dark:bg-slate-600 rounded w-1/4"></div>
+                <div class="h-4 bg-surface-1 rounded w-3/4"></div>
+                <div class="h-4 bg-surface-1 rounded w-1/2"></div>
+                <div class="h-6 bg-surface-1 rounded w-1/4"></div>
               </div>
             </div>
           </slot>
@@ -740,16 +740,16 @@ defineExpose({
           :checkable="checkable"
           :toggle-row="() => row.toggleSelected()"
         >
-          <div class="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-4 hover:shadow-md transition-shadow relative"
+          <div class="bg-card rounded-lg border border-card-line p-4 hover:shadow-md transition-shadow relative"
             :class="{ 'ring-2 ring-indigo-400 dark:ring-indigo-600': row.getIsSelected() }">
             <div v-if="checkable" class="absolute top-2 left-2 z-10">
               <input type="checkbox" :checked="row.getIsSelected()" @change="row.toggleSelected()"
-                class="rounded border-gray-300 dark:bg-slate-800 dark:border-slate-600" />
+                class="rounded border-card-line dark:bg-card" />
             </div>
             <div class="space-y-2" :class="{ 'pt-6': checkable }">
               <div v-for="cell in row.getVisibleCells().filter(c => c.column.id !== 'select')" :key="cell.id" class="flex justify-between">
-                <span class="text-sm text-gray-500 dark:text-slate-400">{{ cell.column.columnDef.meta?.label ?? cell.column.id }}:</span>
-                <span class="text-sm text-gray-900 dark:text-slate-100">
+                <span class="text-sm text-muted-foreground">{{ cell.column.columnDef.meta?.label ?? cell.column.id }}:</span>
+                <span class="text-sm text-foreground">
                   <slot :name="cell.column.id" :row="row.original" :value="cell.getValue()">{{ cell.getValue() }}</slot>
                 </span>
               </div>
@@ -760,27 +760,27 @@ defineExpose({
 
       <div v-else class="flex items-center justify-center py-12">
         <slot v-if="!search && !columnFilters.length" name="empty">
-          <p class="text-gray-500 dark:text-slate-400 text-lg">No hay registros</p>
+          <p class="text-muted-foreground text-lg">No hay registros</p>
         </slot>
         <slot v-else name="empty-search">
-          <p class="text-gray-500 dark:text-slate-400 text-lg">No hay registros en la búsqueda</p>
+          <p class="text-muted-foreground text-lg">No hay registros en la búsqueda</p>
         </slot>
       </div>
     </div>
 
     <!-- Pagination & controls bar -->
-    <div ref="paginationBarRef" class="flex flex-col sm:flex-row items-center justify-between gap-y-4 sm:gap-y-0 px-4 py-3 border-t border-slate-200 dark:border-slate-700">
+    <div ref="paginationBarRef" class="flex flex-col sm:flex-row items-center justify-between gap-y-4 sm:gap-y-0 px-4 py-3 border-t border-card-line">
       <!-- Left: reload, total, cache, columns button -->
       <div class="flex items-center gap-x-4 flex-wrap gap-y-2">
         <!-- Reload button -->
         <div v-if="showReloadButton" class="flex items-center gap-x-2">
           <IconReload
             v-if="!loading"
-            class="size-4 cursor-pointer text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-300 transition-colors"
+            class="size-4 cursor-pointer text-muted-foreground hover:text-muted-foreground-1 transition-colors"
             @click="reloadTable"
           />
           <div v-else>
-            <svg class="animate-spin size-4 text-slate-400 dark:text-slate-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg class="animate-spin size-4 text-muted-foreground-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="10" opacity=".25" />
               <path d="M22 12a10 10 0 0 1-10 10" />
             </svg>
@@ -788,7 +788,7 @@ defineExpose({
         </div>
 
         <!-- Total records -->
-        <p class="text-sm text-gray-800 dark:text-slate-200 font-medium">{{ rowCount }} registros</p>
+        <p class="text-sm text-foreground font-medium">{{ rowCount }} registros</p>
 
         <!-- Cache badge -->
         <div v-if="isDataFromCache && cached" class="group relative flex items-center">
@@ -811,12 +811,12 @@ defineExpose({
       <div class="flex items-center gap-x-8">
         <!-- Per page selector -->
         <div class="flex items-center gap-x-2">
-          <label class="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest">Filas:</label>
+          <label class="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Filas:</label>
           <select
             v-if="!isCustomPerPage"
             :value="pagination.pageSize"
             @change="(e) => handlePerPageChange(e.target.value)"
-            class="bg-slate-100 dark:bg-slate-800 border-none text-[11px] font-bold text-slate-600 dark:text-slate-300 rounded-lg focus:ring-0 cursor-pointer py-1 pl-2 pr-8"
+            class="bg-surface border-none text-[11px] font-bold text-muted-foreground-1 rounded-lg focus:ring-0 cursor-pointer py-1 pl-2 pr-8"
           >
             <option :value="10">10</option>
             <option :value="25">25</option>
@@ -830,7 +830,7 @@ defineExpose({
               :value="pagination.pageSize"
               @change="(e) => table.setPageSize(parseInt(e.target.value) || 10)"
               min="1" max="500"
-              class="w-14 bg-slate-100 dark:bg-slate-800 border-none text-[11px] font-bold text-slate-600 dark:text-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500/20 py-1 px-2"
+              class="w-14 bg-surface border-none text-[11px] font-bold text-muted-foreground-1 rounded-lg focus:ring-2 focus:ring-indigo-500/20 py-1 px-2"
             />
             <button @click="resetPerPage" class="text-[10px] text-indigo-500 font-bold hover:underline">Volver</button>
           </div>
@@ -840,7 +840,7 @@ defineExpose({
         <nav class="flex justify-end items-center gap-x-1" aria-label="Pagination">
           <button
             type="button"
-            class="size-8 flex items-center justify-center rounded-lg text-gray-800 hover:bg-gray-100 dark:text-white dark:hover:bg-white/10 disabled:opacity-30"
+            class="size-8 flex items-center justify-center rounded-lg text-foreground hover:bg-muted-hover disabled:opacity-30"
             :disabled="!table.getCanPreviousPage()"
             @click="table.previousPage()"
           >
@@ -849,15 +849,15 @@ defineExpose({
             </svg>
           </button>
           <div class="flex items-center gap-x-1 mx-2">
-            <span class="size-8 flex items-center justify-center text-xs font-bold rounded-lg bg-gray-100 dark:bg-slate-700 text-gray-800 dark:text-white">
+            <span class="size-8 flex items-center justify-center text-xs font-bold rounded-lg bg-surface text-foreground">
               {{ pagination.pageIndex + 1 }}
             </span>
-            <span class="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase mx-1">de</span>
-            <span class="text-[10px] font-bold text-gray-400 dark:text-slate-500">{{ table.getPageCount() }}</span>
+            <span class="text-[10px] font-bold text-muted-foreground uppercase mx-1">de</span>
+            <span class="text-[10px] font-bold text-muted-foreground">{{ table.getPageCount() }}</span>
           </div>
           <button
             type="button"
-            class="size-8 flex items-center justify-center rounded-lg text-gray-800 hover:bg-gray-100 dark:text-white dark:hover:bg-white/10 disabled:opacity-30"
+            class="size-8 flex items-center justify-center rounded-lg text-foreground hover:bg-muted-hover disabled:opacity-30"
             :disabled="!table.getCanNextPage()"
             @click="table.nextPage()"
           >

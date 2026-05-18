@@ -425,10 +425,10 @@ const handleRowKeydown = (row, event) => {
   <div class="relative">
     <!-- Table view -->
     <div v-if="!isGridView" class="overflow-x-auto relative">
-      <table class="relative min-w-full divide-y divide-gray-200 dark:divide-slate-700">
-        <thead class="relative z-20 bg-white dark:bg-slate-800">
+      <table class="relative min-w-full divide-y divide-card-line">
+        <thead class="relative z-20 bg-card">
           <tr
-            class="divide-x divide-gray-200 dark:border-slate-700 dark:divide-slate-700"
+            class="divide-x divide-card-line"
             :class="{ 'border-t border-gray-200': loading || data.length > 0 }"
           >
             <th v-if="checkable" class="text-center w-12">
@@ -436,7 +436,7 @@ const handleRowKeydown = (row, event) => {
                 type="checkbox"
                 :checked="isAllVisibleSelected"
                 @change="toggleSelectAll"
-                class="mx-2 shrink-0 border-gray-300 rounded-sm text-blue-900 focus:ring-blue-900 dark:bg-slate-800 dark:border-slate-600"
+                class="mx-2 shrink-0 border-gray-300 rounded-sm text-blue-900 focus:ring-blue-900 dark:bg-card border-card-line"
               />
             </th>
             <th
@@ -447,7 +447,7 @@ const handleRowKeydown = (row, event) => {
               @click="toggleSort(col)"
             >
               <div class="hs-dropdown relative inline-flex w-full cursor-pointer">
-                <button class="px-6 py-3 text-start w-full flex items-center gap-x-1 text-[11px] font-bold text-gray-500 dark:text-slate-400 uppercase tracking-wider">
+                <button class="px-6 py-3 text-start w-full flex items-center gap-x-1 text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
                   {{ col.label }}
                   <span v-if="col.sortable">
                     <IconArrowsSort v-if="getSortDirection(col.key) === null" class="size-4" />
@@ -459,16 +459,16 @@ const handleRowKeydown = (row, event) => {
             </th>
           </tr>
         </thead>
-        <tbody ref="tableBodyRef" class="divide-y divide-gray-200 dark:divide-slate-700">
+        <tbody ref="tableBodyRef" class="divide-y divide-card-line">
           <!-- Loading skeleton -->
           <tr
             v-if="loading"
             v-for="(_, index) in skeletonRows"
             :key="'skeleton-' + index"
-            class="animate-pulse divide-x divide-gray-200 dark:divide-slate-700 bg-white dark:bg-slate-800"
+            class="animate-pulse divide-x divide-card-line bg-card"
           >
             <td v-if="checkable" class="text-center w-12" :style="{ height: lastRowHeight + 'px' }">
-              <div class="w-4 h-4 bg-gray-300 dark:bg-slate-600 rounded mx-auto"></div>
+              <div class="w-4 h-4 bg-surface-1 rounded mx-auto"></div>
             </td>
             <td
               v-for="col in columns"
@@ -477,7 +477,7 @@ const handleRowKeydown = (row, event) => {
               :class="col.class || ''"
               :style="{ height: lastRowHeight + 'px' }"
             >
-              <div class="h-4 w-[50%] rounded bg-gray-200 dark:bg-slate-600"></div>
+              <div class="h-4 w-[50%] rounded bg-surface-1"></div>
             </td>
           </tr>
 
@@ -486,10 +486,10 @@ const handleRowKeydown = (row, event) => {
             v-if="!loading && data.length === 0"
             v-for="(_, index) in skeletonRows"
             :key="'empty-skeleton-' + index"
-            class="divide-x divide-gray-200 dark:divide-slate-700 bg-white dark:bg-slate-800"
+            class="divide-x divide-card-line bg-card"
           >
             <td v-if="checkable" class="text-center w-12" :style="{ height: lastRowHeight + 'px' }">
-              <div class="w-4 h-4 bg-gray-200 dark:bg-slate-600 rounded mx-auto"></div>
+              <div class="w-4 h-4 bg-surface-1 rounded mx-auto"></div>
             </td>
             <td
               v-for="col in columns"
@@ -498,7 +498,7 @@ const handleRowKeydown = (row, event) => {
               :class="col.class || ''"
               :style="{ height: lastRowHeight + 'px' }"
             >
-              <div class="h-4 w-[50%] rounded bg-gray-100 dark:bg-slate-700"></div>
+              <div class="h-4 w-[50%] rounded bg-surface"></div>
             </td>
           </tr>
 
@@ -510,7 +510,7 @@ const handleRowKeydown = (row, event) => {
             @click="(event) => handleRowClick(row, event)"
             @keydown="(event) => handleRowKeydown(row, event)"
             :tabindex="isRowClickEnabled ? 0 : undefined"
-            class="divide-x divide-gray-200 dark:divide-slate-700 bg-white hover:bg-gray-50 dark:bg-slate-800 dark:hover:bg-slate-900"
+            class="divide-x divide-card-line bg-card hover:bg-muted"
             :class="{ 'cursor-pointer': isRowClickEnabled }"
           >
             <td v-if="checkable" class="text-center w-12" @click.stop>
@@ -518,13 +518,13 @@ const handleRowKeydown = (row, event) => {
                 type="checkbox"
                 :checked="isRowSelected(row)"
                 @change="() => toggleRow(row)"
-                class="rounded border-gray-300 dark:bg-slate-800 dark:border-slate-600"
+                class="rounded border-card-line dark:bg-card"
               />
             </td>
             <td
               v-for="col in columns"
               :key="col.key"
-              class="px-6 py-3 relative group text-sm text-slate-600 dark:text-slate-300"
+              class="px-6 py-3 relative group text-sm text-muted-foreground-1"
               :class="col.class || ''"
             >
               <slot :name="col.key" :row="row" :value="row[col.key]">
@@ -538,19 +538,19 @@ const handleRowKeydown = (row, event) => {
       <!-- Empty overlays -->
       <div
         v-if="!loading && data.length === 0 && !search"
-        class="absolute inset-0 z-10 pointer-events-none flex items-center justify-center backdrop-blur-sm bg-white/60 dark:bg-slate-800/60 transition-all rounded-xl"
+        class="absolute inset-0 z-10 pointer-events-none flex items-center justify-center backdrop-blur-sm bg-card/60 transition-all rounded-xl"
       >
         <slot name="empty">
-          <p class="text-slate-400 dark:text-slate-500 text-lg font-medium italic">No hay registros</p>
+          <p class="text-muted-foreground text-lg font-medium italic">No hay registros</p>
         </slot>
       </div>
 
       <div
         v-if="!loading && data.length === 0 && search"
-        class="absolute inset-0 z-10 pointer-events-none flex items-center justify-center backdrop-blur-sm bg-white/60 dark:bg-slate-800/60 transition-all rounded-xl"
+        class="absolute inset-0 z-10 pointer-events-none flex items-center justify-center backdrop-blur-sm bg-card/60 transition-all rounded-xl"
       >
         <slot name="empty-search">
-          <p class="text-slate-400 dark:text-slate-500 text-lg font-medium italic">No hay registros en la búsqueda</p>
+          <p class="text-muted-foreground text-lg font-medium italic">No hay registros en la búsqueda</p>
         </slot>
       </div>
     </div>
@@ -561,11 +561,11 @@ const handleRowKeydown = (row, event) => {
       <div v-if="loading" :class="gridClass">
         <div v-for="(_, index) in skeletonRows" :key="'grid-skeleton-' + index" class="animate-pulse">
           <slot name="grid-skeleton">
-            <div class="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-4">
+            <div class="bg-card rounded-lg border border-card-line p-4">
               <div class="space-y-3">
-                <div class="h-4 bg-gray-200 dark:bg-slate-600 rounded w-3/4"></div>
-                <div class="h-4 bg-gray-200 dark:bg-slate-600 rounded w-1/2"></div>
-                <div class="h-6 bg-gray-200 dark:bg-slate-600 rounded w-1/4"></div>
+                <div class="h-4 bg-surface-1 rounded w-3/4"></div>
+                <div class="h-4 bg-surface-1 rounded w-1/2"></div>
+                <div class="h-6 bg-surface-1 rounded w-1/4"></div>
               </div>
             </div>
           </slot>
@@ -583,19 +583,19 @@ const handleRowKeydown = (row, event) => {
           :checkable="checkable"
           :toggleRow="() => toggleRow(row)"
         >
-          <div class="bg-white dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700 p-4 hover:shadow-md transition-shadow relative">
+          <div class="bg-card rounded-lg border border-card-line p-4 hover:shadow-md transition-shadow relative">
             <div v-if="checkable" class="absolute top-2 left-2 z-10">
               <input
                 type="checkbox"
                 :checked="isRowSelected(row)"
                 @change="() => toggleRow(row)"
-                class="rounded border-gray-300 dark:bg-slate-800 dark:border-slate-600"
+                class="rounded border-card-line dark:bg-card"
               />
             </div>
             <div class="space-y-2" :class="{ 'pt-6': checkable }">
               <div v-for="col in columns" :key="col.key" class="flex justify-between">
-                <span class="text-sm text-gray-500 dark:text-slate-400">{{ col.label }}:</span>
-                <span class="text-sm text-gray-900 dark:text-slate-100">
+                <span class="text-sm text-muted-foreground">{{ col.label }}:</span>
+                <span class="text-sm text-foreground">
                   <slot :name="col.key" :row="row" :value="row[col.key]">{{ row[col.key] }}</slot>
                 </span>
               </div>
@@ -607,10 +607,10 @@ const handleRowKeydown = (row, event) => {
       <!-- Grid empty state -->
       <div v-else class="flex items-center justify-center py-12">
         <slot v-if="!search" name="empty">
-          <p class="text-gray-500 dark:text-slate-400 text-lg">No hay registros</p>
+          <p class="text-muted-foreground text-lg">No hay registros</p>
         </slot>
         <slot v-else name="empty-search">
-          <p class="text-gray-500 dark:text-slate-400 text-lg">No hay registros en la búsqueda</p>
+          <p class="text-muted-foreground text-lg">No hay registros en la búsqueda</p>
         </slot>
       </div>
     </div>
@@ -622,18 +622,18 @@ const handleRowKeydown = (row, event) => {
         <div v-if="showReloadButton" class="flex items-center justify-start gap-x-2">
           <IconReload
             v-if="!loading"
-            class="size-4 cursor-pointer text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-300 transition-colors"
+            class="size-4 cursor-pointer text-muted-foreground hover:text-muted-foreground-1 transition-colors"
             @click="() => { clearCache(); isDataFromCache.value = false; fetchData(); }"
           />
           <div v-if="loading">
-            <svg class="animate-spin size-4 text-slate-400 dark:text-slate-600" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <svg class="animate-spin size-4 text-muted-foreground-2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="10" opacity=".25" />
               <path d="M22 12a10 10 0 0 1-10 10" />
             </svg>
           </div>
         </div>
 
-        <p class="text-sm text-gray-800 dark:text-slate-200 font-medium">{{ meta.total }} registros</p>
+        <p class="text-sm text-foreground font-medium">{{ meta.total }} registros</p>
 
         <div v-if="isDataFromCache && cached" class="group relative flex items-center">
           <div class="flex items-center gap-x-1.5 py-1 px-2.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-lg cursor-help transition-colors hover:bg-emerald-500/20">
@@ -654,12 +654,12 @@ const handleRowKeydown = (row, event) => {
       <!-- Right: per-page & pagination -->
       <div class="flex items-center gap-x-8">
         <div class="flex items-center gap-x-2">
-          <label class="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase tracking-widest">Filas:</label>
+          <label class="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Filas:</label>
           <select
             v-if="!isCustomPerPage"
             :value="perPage"
             @change="(e) => handlePerPageChange(e.target.value)"
-            class="bg-slate-100 dark:bg-slate-800 border-none text-[11px] font-bold text-slate-600 dark:text-slate-300 rounded-lg focus:ring-0 cursor-pointer py-1 pl-2 pr-8"
+            class="bg-surface border-none text-[11px] font-bold text-muted-foreground-1 rounded-lg focus:ring-0 cursor-pointer py-1 pl-2 pr-8"
           >
             <option :value="10">10</option>
             <option :value="25">25</option>
@@ -673,7 +673,7 @@ const handleRowKeydown = (row, event) => {
               v-model.number="perPage"
               min="1"
               max="500"
-              class="w-14 bg-slate-100 dark:bg-slate-800 border-none text-[11px] font-bold text-slate-600 dark:text-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500/20 py-1 px-2"
+              class="w-14 bg-surface border-none text-[11px] font-bold text-muted-foreground-1 rounded-lg focus:ring-2 focus:ring-indigo-500/20 py-1 px-2"
               @blur="perPage = perPage || 10"
             />
             <button @click="resetPerPage" class="text-[10px] text-indigo-500 font-bold hover:underline">Volver</button>
@@ -683,7 +683,7 @@ const handleRowKeydown = (row, event) => {
         <nav class="flex justify-end items-center gap-x-1" aria-label="Pagination">
           <button
             type="button"
-            class="size-8 flex items-center justify-center rounded-lg text-gray-800 hover:bg-gray-100 dark:text-white dark:hover:bg-white/10 disabled:opacity-30"
+            class="size-8 flex items-center justify-center rounded-lg text-foreground hover:bg-muted-hover disabled:opacity-30"
             :disabled="page <= 1"
             @click="goToPreviousPage"
           >
@@ -692,13 +692,13 @@ const handleRowKeydown = (row, event) => {
             </svg>
           </button>
           <div class="flex items-center gap-x-1 mx-2">
-            <span class="size-8 flex items-center justify-center text-xs font-bold rounded-lg bg-gray-100 dark:bg-slate-700 text-gray-800 dark:text-white">{{ meta.current_page }}</span>
-            <span class="text-[10px] font-bold text-gray-400 dark:text-slate-500 uppercase mx-1">de</span>
-            <span class="text-[10px] font-bold text-gray-400 dark:text-slate-500">{{ meta.last_page }}</span>
+            <span class="size-8 flex items-center justify-center text-xs font-bold rounded-lg bg-surface text-foreground">{{ meta.current_page }}</span>
+            <span class="text-[10px] font-bold text-muted-foreground uppercase mx-1">de</span>
+            <span class="text-[10px] font-bold text-muted-foreground">{{ meta.last_page }}</span>
           </div>
           <button
             type="button"
-            class="size-8 flex items-center justify-center rounded-lg text-gray-800 hover:bg-gray-100 dark:text-white dark:hover:bg-white/10 disabled:opacity-30"
+            class="size-8 flex items-center justify-center rounded-lg text-foreground hover:bg-muted-hover disabled:opacity-30"
             :disabled="page >= meta.last_page"
             @click="goToNextPage"
           >

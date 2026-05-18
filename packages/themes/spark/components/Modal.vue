@@ -52,18 +52,18 @@ onUnmounted(() => {
         @click="onBackdrop"
       >
         <div
-          :class="['bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl w-full modal-content', sizeClass]"
+          :class="['bg-card border border-card-line rounded-xl shadow-xl w-full modal-content', sizeClass]"
           @click.stop
         >
           <!-- Header -->
-          <div v-if="showHeader" class="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-700">
-            <h3 :id="`${modalId}-label`" class="text-sm font-semibold text-slate-800 dark:text-slate-100">
+          <div v-if="showHeader" class="flex items-center justify-between px-5 py-4 border-b border-card-line">
+            <h3 :id="`${modalId}-label`" class="text-sm font-semibold text-foreground">
               <slot name="header">{{ title }}</slot>
             </h3>
             <button
               v-if="closable"
               type="button"
-              class="size-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:text-slate-200 dark:hover:bg-slate-700 transition-colors"
+              class="size-7 flex items-center justify-center rounded-lg text-muted-foreground hover:text-muted-foreground-1 hover:bg-muted-hover transition-colors"
               @click="close"
             >
               <svg class="size-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -78,7 +78,7 @@ onUnmounted(() => {
           </div>
 
           <!-- Footer -->
-          <div v-if="showFooter" class="flex items-center justify-end gap-2 px-5 py-4 border-t border-slate-200 dark:border-slate-700">
+          <div v-if="showFooter" class="flex items-center justify-end gap-2 px-5 py-4 border-t border-card-line">
             <slot name="footer">
               <AppButton v-if="closable" text="Cerrar" severity="secondary" size="sm" @click="close" />
             </slot>

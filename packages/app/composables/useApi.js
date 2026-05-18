@@ -3,7 +3,11 @@
 
 export function useApi() {
   const config = useRuntimeConfig()
-  const baseUrl = config.public.apiBaseUrl || '/api'
+  // On the server, use the private internal URL (e.g. http://api:80) because relative URLs
+  // don't resolve in Node.js. On the client, use the public apiBaseUrl (/api proxy).
+  const baseUrl = import.meta.server
+    ? (config.apiInternalUrl || config.public.apiBaseUrl || '/api')
+    : (config.public.apiBaseUrl || '/api')
   const loginPath = config.public.loginPath || '/login'
 
   const { run, add } = useRequestInterceptors()

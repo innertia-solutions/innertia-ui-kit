@@ -190,7 +190,7 @@ const clear = () => {
         :value="internalValue"
         :disabled="disabled"
         :placeholder="placeholder"
-        class="w-full py-2 ps-10 pe-10 border border-gray-300 rounded-lg text-sm dark:bg-slate-800 dark:border-slate-600 dark:text-white disabled:opacity-50 disabled:pointer-events-none cursor-pointer focus:border-blue-500 focus:ring-blue-500/20 outline-none transition-all block"
+        class="w-full py-2 ps-10 pe-10 border border-gray-300 rounded-lg text-sm dark:bg-card dark:border-card-line dark:text-white disabled:opacity-50 disabled:pointer-events-none cursor-pointer focus:border-blue-500 focus:ring-blue-500/20 outline-none transition-all block"
         readonly
       />
 

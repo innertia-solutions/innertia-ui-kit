@@ -55,8 +55,8 @@ const displayText = computed(() => {
 
 const selectClasses = computed(() => {
   const base =
-    "relative w-full rounded-lg border bg-white dark:bg-slate-800 transition-colors cursor-pointer text-slate-900 dark:text-white py-2 px-3 text-sm focus:outline-none focus:ring-0 focus:border-gray-400";
-  const validation = "border-gray-200 dark:border-slate-700";
+    "relative w-full rounded-lg border bg-card transition-colors cursor-pointer text-foreground py-2 px-3 text-sm focus:outline-none focus:ring-0 focus:border-gray-400";
+  const validation = "border-card-line";
   const disabled = props.disabled ? "opacity-50 cursor-not-allowed" : "";
   return `${base} ${validation} ${disabled}`;
 });
@@ -110,7 +110,7 @@ onUnmounted(() => document.removeEventListener("mousedown", handleClickOutside))
         <span
           class="truncate flex-1 text-left pr-10"
           :class="{
-            'text-gray-400 dark:text-slate-500': !hasSelection,
+            'text-muted-foreground': !hasSelection,
             'text-slate-900 dark:text-white': hasSelection,
           }"
         >
@@ -121,7 +121,7 @@ onUnmounted(() => document.removeEventListener("mousedown", handleClickOutside))
 
         <span
           v-if="clearable && hasSelection && !disabled"
-          class="absolute end-8 top-1/2 -translate-y-1/2 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full p-1 transition-colors focus:outline-none focus:ring-1 focus:ring-slate-400"
+          class="absolute end-8 top-1/2 -translate-y-1/2 hover:bg-muted-hover rounded-full p-1 transition-colors focus:outline-none focus:ring-1 focus:ring-slate-400"
           role="button"
           tabindex="0"
           @click.stop="clearSelection"
@@ -139,7 +139,7 @@ onUnmounted(() => document.removeEventListener("mousedown", handleClickOutside))
 
         <div class="absolute top-1/2 end-3 -translate-y-1/2">
           <svg
-            class="shrink-0 size-3.5 text-gray-500 dark:text-gray-500 transition-transform"
+            class="shrink-0 size-3.5 text-muted-foreground transition-transform"
             :class="{ 'rotate-180': isOpen }"
             xmlns="http://www.w3.org/2000/svg"
             width="24"
@@ -169,7 +169,7 @@ onUnmounted(() => document.removeEventListener("mousedown", handleClickOutside))
       <div
         v-show="isOpen"
         :class="[
-          'absolute z-50 w-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl max-h-60 overflow-auto',
+          'absolute z-50 w-full mt-1 bg-dropdown border border-dropdown-line rounded-xl shadow-xl max-h-60 overflow-auto',
           menuClass,
         ]"
       >
@@ -179,8 +179,8 @@ onUnmounted(() => document.removeEventListener("mousedown", handleClickOutside))
             :key="getOptionValue(option)"
             type="button"
             :class="[
-              'w-full px-3 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center text-sm',
-              isOptionSelected(option) ? 'bg-slate-50 dark:bg-slate-700/50' : '',
+              'w-full px-3 py-2 text-left hover:bg-muted-hover flex items-center text-sm',
+              isOptionSelected(option) ? 'bg-muted' : '',
             ]"
             @click="selectOption(option)"
           >
@@ -196,7 +196,7 @@ onUnmounted(() => document.removeEventListener("mousedown", handleClickOutside))
                   />
                   <span :class="['relative inline-flex rounded-full size-2.5', option.dot]" />
                 </span>
-                <span class="font-bold text-slate-800 dark:text-slate-200 truncate">
+                <span class="font-bold text-foreground truncate">
                   {{ getOptionLabel(option) }}
                 </span>
               </div>
@@ -217,7 +217,7 @@ onUnmounted(() => document.removeEventListener("mousedown", handleClickOutside))
           </button>
         </div>
 
-        <div v-else class="px-3 py-4 text-center text-gray-500 dark:text-gray-400 text-sm">
+        <div v-else class="px-3 py-4 text-center text-muted-foreground text-sm">
           Sin opciones
         </div>
       </div>

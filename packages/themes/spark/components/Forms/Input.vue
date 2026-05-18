@@ -11,6 +11,7 @@ const props = defineProps<{
   hint?: string
   iconLeft?: object | Function | null
   autocomplete?: string
+  size?: 'sm' | 'md'
 }>()
 
 const modelValue = defineModel<string | number | null>({ default: '' })
@@ -22,18 +23,20 @@ const inputType = computed(() => {
   return props.type ?? 'text'
 })
 
-const baseClasses = 'py-2 px-3 block w-full rounded-lg text-sm text-slate-800 border border-gray-200 dark:border-slate-700 focus:ring-0 focus:border-gray-400 focus:outline-none disabled:opacity-50 dark:bg-transparent dark:text-slate-300 transition-colors placeholder:text-slate-400 dark:placeholder:text-slate-500'
+const baseClasses = computed(() =>
+  `${props.size === 'sm' ? 'py-1.5' : 'py-2'} px-3 block w-full rounded-lg text-sm text-slate-800 border border-card-line focus:ring-0 focus:border-gray-400 focus:outline-none disabled:opacity-50 dark:bg-transparent dark:text-muted-foreground-1 transition-colors placeholder:text-muted-foreground dark:placeholder:text-muted-foreground`
+)
 </script>
 
 <template>
   <div class="w-full">
-    <label v-if="label" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+    <label v-if="label" class="block text-sm font-medium text-foreground mb-1.5">
       {{ label }}
     </label>
 
     <div class="relative">
       <!-- Ícono izquierdo -->
-      <div v-if="iconLeft" class="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none text-slate-400">
+      <div v-if="iconLeft" class="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none text-muted-foreground">
         <component :is="iconLeft" class="size-4" />
       </div>
 
@@ -56,7 +59,7 @@ const baseClasses = 'py-2 px-3 block w-full rounded-lg text-sm text-slate-800 bo
         v-if="type === 'password'"
         type="button"
         tabindex="-1"
-        class="absolute inset-y-0 end-0 flex items-center px-3 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+        class="absolute inset-y-0 end-0 flex items-center px-3 text-muted-foreground hover:text-muted-foreground-1 transition-colors"
         @click="showPassword = !showPassword"
       >
         <component :is="showPassword ? IconEyeOff : IconEye" class="size-4" />
@@ -67,6 +70,6 @@ const baseClasses = 'py-2 px-3 block w-full rounded-lg text-sm text-slate-800 bo
     <p v-if="error" class="text-xs text-red-500 dark:text-red-400 mt-1">{{ error }}</p>
 
     <!-- Hint -->
-    <p v-else-if="hint" class="text-xs text-slate-400 mt-1">{{ hint }}</p>
+    <p v-else-if="hint" class="text-xs text-muted-foreground mt-1">{{ hint }}</p>
   </div>
 </template>

@@ -106,7 +106,7 @@ const onDrop = async (targetState) => {
 
 // ─── Color map ────────────────────────────────────────────────────────────────
 const colorMap = {
-  slate:  { header: 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300', over: 'ring-2 ring-slate-400' },
+  slate:  { header: 'bg-surface text-foreground', over: 'ring-2 ring-slate-400' },
   red:    { header: 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300',       over: 'ring-2 ring-red-400' },
   yellow: { header: 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-300', over: 'ring-2 ring-yellow-400' },
   green:  { header: 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300', over: 'ring-2 ring-green-400' },
@@ -135,7 +135,7 @@ defineExpose({ reload, rows })
       <div
         v-for="state in states"
         :key="state.key"
-        class="flex-shrink-0 w-72 flex flex-col rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden transition-shadow"
+        class="flex-shrink-0 w-72 flex flex-col rounded-xl border border-card-line overflow-hidden transition-shadow"
         :class="dragOverState === state.key ? getColors(state).over : ''"
         @dragover="onDragOver($event, state.key)"
         @dragleave="onDragLeave"
@@ -150,13 +150,13 @@ defineExpose({ reload, rows })
         </div>
 
         <!-- Cards -->
-        <div class="flex-1 flex flex-col gap-2 p-3 bg-slate-50/60 dark:bg-slate-900/30 min-h-24">
+        <div class="flex-1 flex flex-col gap-2 p-3 bg-muted min-h-24">
           <div
             v-for="row in columnRows[state.key]"
             :key="row.id"
             draggable="true"
             @dragstart="onDragStart(row, state.key)"
-            class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-3 cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow select-none"
+            class="bg-card border border-card-line rounded-lg p-3 cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow select-none"
             :class="draggedId === row.id ? 'opacity-40' : ''"
             @click="emit('card-click', row)"
           >
@@ -168,8 +168,8 @@ defineExpose({ reload, rows })
                   :key="key"
                   class="text-sm"
                 >
-                  <span class="text-slate-400 dark:text-slate-500 text-xs capitalize">{{ key }}: </span>
-                  <span class="text-slate-800 dark:text-slate-200 font-medium">{{ val }}</span>
+                  <span class="text-muted-foreground text-xs capitalize">{{ key }}: </span>
+                  <span class="text-foreground font-medium">{{ val }}</span>
                 </div>
               </div>
             </slot>
@@ -177,7 +177,7 @@ defineExpose({ reload, rows })
 
           <div
             v-if="!columnRows[state.key]?.length"
-            class="flex-1 flex items-center justify-center py-6 text-sm text-slate-300 dark:text-slate-600"
+            class="flex-1 flex items-center justify-center py-6 text-sm text-muted-foreground-2"
           >
             Sin elementos
           </div>

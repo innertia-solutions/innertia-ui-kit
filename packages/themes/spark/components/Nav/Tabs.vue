@@ -18,8 +18,8 @@ const props = withDefaults(defineProps<{
 
 const colorTextClass = computed(() => ({
   blue:   'text-blue-600   dark:text-blue-400',
-  gray:   'text-slate-700  dark:text-slate-200',
-  slate:  'text-slate-700  dark:text-slate-200',
+  gray:   'text-foreground',
+  slate:  'text-foreground',
   green:  'text-green-600  dark:text-green-400',
   amber:  'text-amber-600  dark:text-amber-400',
   red:    'text-red-600    dark:text-red-400',
@@ -28,7 +28,7 @@ const colorTextClass = computed(() => ({
 }[props.color] ?? 'text-blue-600 dark:text-blue-400'))
 
 const resolvedActiveClass = computed(() =>
-  props.activeClass ?? `bg-white dark:bg-slate-800 shadow-sm ${colorTextClass.value}`
+  props.activeClass ?? `bg-card shadow-sm ${colorTextClass.value}`
 )
 
 const route = useRoute()
@@ -38,7 +38,7 @@ const isActive = (tab: Tab) =>
 </script>
 
 <template>
-  <div class="flex items-center gap-x-1 p-1 bg-slate-100 dark:bg-slate-900/50 rounded-xl w-fit border border-slate-200 dark:border-slate-700">
+  <div class="flex items-center gap-x-1 p-1 bg-surface border border-card-line rounded-xl w-fit">
     <NuxtLink
       v-for="tab in tabs"
       :key="tab.to"
@@ -46,7 +46,7 @@ const isActive = (tab: Tab) =>
       class="flex items-center gap-x-2 px-4 py-2 text-xs font-bold rounded-lg transition-all"
       :class="isActive(tab)
         ? resolvedActiveClass
-        : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'"
+        : 'text-muted-foreground hover:text-foreground'"
     >
       <component :is="tab.icon" v-if="tab.icon" class="size-4" />
       {{ tab.label }}

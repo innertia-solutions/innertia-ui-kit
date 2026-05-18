@@ -1,5 +1,5 @@
 // Registers the Authorization header interceptor into the shared registry.
-// Runs only on the client (cookie-based token is not available on the server).
+// Universal: useCookie reads request cookies in SSR and document.cookie on client.
 export default defineNuxtPlugin(() => {
   const { add } = useRequestInterceptors()
 

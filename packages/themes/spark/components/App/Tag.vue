@@ -95,7 +95,7 @@ const severityClasses = computed(() => {
       primary:
         "border border-blue-600 text-blue-600 bg-blue-50 dark:border-blue-500 dark:text-blue-500 dark:bg-blue-900/20",
       secondary:
-        "border border-gray-500 text-gray-700 bg-gray-50 dark:border-gray-400 dark:text-gray-300 dark:bg-gray-800",
+        "border border-card-line text-muted-foreground-1 bg-card",
       success:
         "border border-green-600 text-green-600 bg-green-50 dark:border-green-500 dark:text-green-500 dark:bg-green-900/20",
       danger:

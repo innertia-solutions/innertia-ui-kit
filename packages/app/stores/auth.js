@@ -72,9 +72,11 @@ export const useAuthStore = defineStore('auth', {
       storage: piniaPluginPersistedstate.cookies,
     },
     {
-      // Resto en localStorage — no necesitan SSR. Key separado para no colisionar.
+      // currentContext y availableContexts en localStorage.
+      // user NO se persiste: auth-init.client.ts lo recarga desde API en cada boot,
+      // evitando que un user:null guardado en localStorage sobreescriba el estado.
       key: 'auth_data',
-      pick: ['user', 'currentContext', 'availableContexts'],
+      pick: ['currentContext', 'availableContexts'],
       storage: piniaPluginPersistedstate.localStorage,
     },
   ],

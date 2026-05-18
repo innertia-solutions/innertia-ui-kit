@@ -35,13 +35,13 @@ const activeCount = computed(() =>
 
       <!-- text -->
       <div v-if="col.filterType === 'text'">
-        <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{{ col.label }}</label>
+        <label class="block text-xs font-medium text-muted-foreground mb-1">{{ col.label }}</label>
         <input
           type="text"
           :value="localFilters[col.key] ?? ''"
           @input="updateFilter(col.key, $event.target.value)"
           :placeholder="`Filtrar ${col.label.toLowerCase()}...`"
-          class="w-full rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white py-1.5 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+          class="w-full rounded-lg border border-card-line bg-card text-foreground py-1.5 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
         />
       </div>
 
@@ -57,27 +57,27 @@ const activeCount = computed(() =>
 
       <!-- daterange -->
       <div v-else-if="col.filterType === 'daterange'">
-        <label class="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{{ col.label }}</label>
+        <label class="block text-xs font-medium text-muted-foreground mb-1">{{ col.label }}</label>
         <div class="flex items-center gap-1.5">
           <input
             type="date"
             :value="localFilters[col.key]?.from ?? ''"
             @change="updateFilter(col.key, { ...localFilters[col.key], from: $event.target.value || null })"
-            class="flex-1 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white py-1.5 px-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            class="flex-1 rounded-lg border border-card-line bg-card text-foreground py-1.5 px-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
           />
           <span class="text-slate-400 text-xs shrink-0">—</span>
           <input
             type="date"
             :value="localFilters[col.key]?.to ?? ''"
             @change="updateFilter(col.key, { ...localFilters[col.key], to: $event.target.value || null })"
-            class="flex-1 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white py-1.5 px-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            class="flex-1 rounded-lg border border-card-line bg-card text-foreground py-1.5 px-2 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500"
           />
         </div>
       </div>
 
     </template>
 
-    <div class="pt-2 border-t border-slate-100 dark:border-slate-700/60">
+    <div class="pt-2 border-t border-card-line">
       <button
         v-if="activeCount > 0"
         type="button"
@@ -87,7 +87,7 @@ const activeCount = computed(() =>
         <svg class="size-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
         Limpiar filtros
       </button>
-      <p v-else class="text-xs text-center text-slate-400 dark:text-slate-500 py-0.5">Sin filtros activos</p>
+      <p v-else class="text-xs text-center text-muted-foreground py-0.5">Sin filtros activos</p>
     </div>
   </div>
 </template>

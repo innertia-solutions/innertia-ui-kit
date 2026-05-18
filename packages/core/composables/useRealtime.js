@@ -1,4 +1,3 @@
-import Pusher from 'pusher-js'
 import { ref, readonly } from 'vue'
 // useRequestInterceptors is auto-imported from this same package (nuxt-core)
 
@@ -17,7 +16,7 @@ export function useRealtime() {
     pusherWsPort,
   } = config.public
 
-  const connect = () => {
+  const connect = async () => {
     if (alreadyConnected || pusher.value) return
 
     if (!pusherAppKey) {
@@ -25,6 +24,9 @@ export function useRealtime() {
       console.error(error.value)
       return
     }
+
+    const PusherModule = await import('pusher-js')
+    const Pusher = PusherModule.default ?? PusherModule
 
     // Build auth headers from all registered interceptors (auth token, X-Tenant-Id, etc.)
     const { run } = useRequestInterceptors()

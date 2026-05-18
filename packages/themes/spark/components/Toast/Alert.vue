@@ -1,6 +1,6 @@
 <template>
   <div
-    class="max-w-xs relative bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl shadow-lg p-4 pr-10 flex items-start overflow-hidden"
+    class="max-w-xs relative bg-card border border-card-line rounded-xl shadow-lg p-4 pr-10 flex items-start overflow-hidden"
     :class="{
       'border-green-200': toast.severity === 'success',
       'border-red-200': toast.severity === 'danger',
@@ -40,7 +40,7 @@
     <!-- Barra de progreso temporal -->
     <div 
       v-if="toast.duration && toast.duration > 0"
-      class="absolute bottom-0 left-0 w-full h-1 bg-gray-200 dark:bg-gray-700"
+      class="absolute bottom-0 left-0 w-full h-1 bg-card-line"
     >
       <div
         class="h-full bg-gradient-to-r"

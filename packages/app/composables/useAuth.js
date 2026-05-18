@@ -31,7 +31,16 @@ export function useAuth() {
     authStore.saveUser(data.user ?? data)
     authStore.savePermissions(data.permissions ?? [])
     authStore.availableContexts = data.availableContexts ?? []
+    applyAppearance(data.preferences?.appearance)
     return data
+  }
+
+  function applyAppearance(appearance) {
+    if (!appearance || !import.meta.client) return
+    const dark = appearance === 'dark'
+    document.documentElement.classList.toggle('dark', dark)
+    localStorage.setItem('hs_theme', appearance)
+    document.cookie = `hs_theme=${appearance};path=/;max-age=${60 * 60 * 24 * 365};SameSite=Lax`
   }
 
   /**
