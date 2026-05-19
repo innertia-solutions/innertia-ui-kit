@@ -35,7 +35,11 @@ export function useApi() {
   }
 
   async function makeRequest(method, path, body = null, options = {}) {
-    const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' }
+    const headers = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'X-Innertia-Source': import.meta.server ? 'ssr' : 'client',
+    }
     run(headers, options)
 
     const cleanPath = path.startsWith('/') ? path.slice(1) : path
