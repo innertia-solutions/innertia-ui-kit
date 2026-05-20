@@ -8,7 +8,7 @@ const props = defineProps({
   name:              { type: String,  default: '' },
   params:            { type: Object,  default: () => ({}) },
   checkable:         { type: Boolean, default: false },
-  cached:            { type: Boolean, default: true },
+  cached:            { type: Boolean, default: false },
   showReloadButton:  { type: Boolean, default: true },
   clickRowToOpen:    { type: Boolean, default: false },
   searchPlaceholder: { type: String,  default: 'Buscar...' },

@@ -11,7 +11,7 @@ const isOpen = ref(false)
 const open  = () => { isOpen.value = true }
 const close = () => { isOpen.value = false }
 
-provide('vantage:sidebar', { isOpen, open, close })
+provide('spark:sidebar', { isOpen, open, close })
 
 const userInitial = computed(() =>
   props.user?.name?.charAt(0).toUpperCase() ?? props.user?.email?.charAt(0).toUpperCase() ?? 'U'
