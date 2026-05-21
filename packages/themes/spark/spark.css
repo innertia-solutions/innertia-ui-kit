@@ -49,6 +49,13 @@
     --color-muted-focus: var(--muted-focus);
     --color-navbar: var(--navbar);
     --color-navbar-line: var(--navbar-line);
+    --color-navbar-inverse: var(--navbar-inverse);
+    --color-navbar-divider: var(--navbar-divider);
+    --color-navbar-nav-foreground: var(--navbar-nav-foreground);
+    --color-navbar-nav-hover: var(--navbar-nav-hover);
+    --color-navbar-nav-focus: var(--navbar-nav-focus);
+    --color-navbar-nav-active: var(--navbar-nav-active);
+    --color-navbar-nav-list-divider: var(--navbar-nav-list-divider);
     --color-sidebar: var(--sidebar);
     --color-sidebar-line: var(--sidebar-line);
     --color-dropdown: var(--dropdown);
@@ -101,6 +108,13 @@
 
     --navbar: #ffffff;
     --navbar-line: #e5e7eb;
+    --navbar-inverse: #1e293b;
+    --navbar-divider: #334155;
+    --navbar-nav-foreground: #374151;
+    --navbar-nav-hover: #f3f4f6;
+    --navbar-nav-focus: #f3f4f6;
+    --navbar-nav-active: #f3f4f6;
+    --navbar-nav-list-divider: #e5e7eb;
     --sidebar: #ffffff;
     --sidebar-line: #e5e7eb;
 
@@ -125,7 +139,7 @@
     --background-1: #0f172a;
     --background-2: #111827;
     --foreground: #f8fafc;
-    --foreground-inverse: #020617;
+    --foreground-inverse: #f8fafc;
 
     --primary: #60a5fa;
     --primary-foreground: #0f172a;
@@ -155,6 +169,13 @@
 
     --navbar: #111827;
     --navbar-line: #1f2937;
+    --navbar-inverse: #0f172a;
+    --navbar-divider: #1e293b;
+    --navbar-nav-foreground: #cbd5e1;
+    --navbar-nav-hover: #1e293b;
+    --navbar-nav-focus: #1e293b;
+    --navbar-nav-active: #1e293b;
+    --navbar-nav-list-divider: #334155;
     --sidebar: #111827;
     --sidebar-line: #1f2937;
 
