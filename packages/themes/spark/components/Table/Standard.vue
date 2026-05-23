@@ -1,5 +1,5 @@
 <script setup>
-import { IconSearch, IconAdjustmentsHorizontal, IconLayoutColumns, IconGripVertical, IconMinus, IconMaximize, IconX } from '@tabler/icons-vue'
+import { IconSearch, IconLayoutColumns, IconGripVertical, IconMinus, IconMaximize, IconX, IconPlus, IconChevronLeft, IconCheck, IconChevronDown } from '@tabler/icons-vue'
 
 const props = defineProps({
   table:             { type: Object,  default: null },
@@ -30,11 +30,9 @@ const forwardedSlots = computed(() => {
   return Object.fromEntries(Object.entries(slots).filter(([k]) => !excluded.has(k)))
 })
 
-const search       = ref('')
+const search        = ref('')
 const activeFilters = ref({})
-const showFilterPanel = ref(false)
-const filterPanelRef  = ref(null)
-const tableRef     = ref(null)
+const tableRef      = ref(null)
 
 // ─── Filter config ─────────────────────────────────────────────────────────────
 const filtersConfig = computed(() =>
@@ -43,14 +41,124 @@ const filtersConfig = computed(() =>
 
 const hasFilterableColumns = computed(() => filtersConfig.value.length > 0)
 
-const activeFilterCount = computed(() =>
-  Object.values(activeFilters.value).filter(v => v !== null && v !== undefined && v !== '').length
+// ─── Notion-style filter ───────────────────────────────────────────────────────
+const showFilterPanel  = ref(false)
+const filterMenuStep   = ref('columns') // 'columns' | 'value'
+const pendingCol       = ref(null)
+const pendingValue     = ref(null)   // string for text/select, { singleDate, from, to } for daterange
+const pendingDateOp    = ref('before') // 'before' | 'after' | 'between'
+const filterMenuRef    = ref(null)
+const filterAddBtnRef  = ref(null)
+const filterMenuStyle  = ref({})
+
+const dateOps = [
+  { value: 'before',  label: 'antes de' },
+  { value: 'after',   label: 'después de' },
+  { value: 'between', label: 'entre' },
+]
+
+const activeFilterList = computed(() =>
+  filtersConfig.value
+    .filter(col => {
+      const v = activeFilters.value[col.key]
+      if (col.filterType === 'daterange') return v?.from || v?.to
+      return v !== null && v !== undefined && v !== ''
+    })
+    .map(col => {
+      const v = activeFilters.value[col.key]
+      let displayOp = '', displayVal = ''
+      if (col.filterType === 'daterange') {
+        if (v.from && v.to) { displayOp = 'entre'; displayVal = `${v.from} y ${v.to}` }
+        else if (v.from) { displayOp = 'después de'; displayVal = v.from }
+        else { displayOp = 'antes de'; displayVal = v.to }
+      } else if (col.filterType === 'select') {
+        displayOp = 'es'
+        displayVal = col.filterOptions?.find(o => o.value === v)?.label ?? v
+      } else {
+        displayOp = 'contiene'; displayVal = v
+      }
+      return { key: col.key, label: col.label, displayOp, displayVal, col }
+    })
 )
+
+const activeFilterCount = computed(() => activeFilterList.value.length)
 
 const mergedParams = computed(() => ({
   ...props.params,
   ...activeFilters.value,
 }))
+
+const removeFilter = (key) => {
+  const u = { ...activeFilters.value }; delete u[key]; activeFilters.value = u
+}
+
+const openFilterMenu = async () => {
+  filterMenuStep.value = 'columns'
+  pendingCol.value = null
+  showFilterPanel.value = true
+  await nextTick()
+  const rect = filterAddBtnRef.value?.getBoundingClientRect()
+  if (rect) filterMenuStyle.value = { top: rect.bottom + 4 + 'px', left: rect.left + 'px' }
+}
+
+const toggleFilterMenu = async () => {
+  if (showFilterPanel.value) { closeFilterMenu() } else { await openFilterMenu() }
+}
+
+const closeFilterMenu = () => {
+  showFilterPanel.value = false
+  filterMenuStep.value = 'columns'
+  pendingCol.value = null
+  pendingValue.value = null
+}
+
+const selectFilterColumn = (col) => {
+  pendingCol.value = col
+  const existing = activeFilters.value[col.key]
+  if (col.filterType === 'daterange') {
+    if (existing?.from && existing?.to) { pendingDateOp.value = 'between'; pendingValue.value = { from: existing.from, to: existing.to, singleDate: '' } }
+    else if (existing?.from) { pendingDateOp.value = 'after'; pendingValue.value = { singleDate: existing.from, from: '', to: '' } }
+    else if (existing?.to) { pendingDateOp.value = 'before'; pendingValue.value = { singleDate: existing.to, from: '', to: '' } }
+    else { pendingDateOp.value = 'before'; pendingValue.value = { singleDate: '', from: '', to: '' } }
+  } else {
+    pendingValue.value = existing ?? ''
+  }
+  filterMenuStep.value = 'value'
+}
+
+const applyPendingFilter = () => {
+  if (!pendingCol.value) return
+  const col = pendingCol.value
+  let v
+  if (col.filterType === 'daterange') {
+    if (pendingDateOp.value === 'between') v = { from: pendingValue.value.from, to: pendingValue.value.to }
+    else if (pendingDateOp.value === 'after') v = { from: pendingValue.value.singleDate }
+    else v = { to: pendingValue.value.singleDate }
+  } else {
+    v = pendingValue.value
+  }
+  activeFilters.value = { ...activeFilters.value, [col.key]: v || null }
+  closeFilterMenu()
+}
+
+const openEditFilter = async (col) => {
+  selectFilterColumn(col)
+  showFilterPanel.value = true
+  await nextTick()
+  const rect = filterAddBtnRef.value?.getBoundingClientRect()
+  if (rect) filterMenuStyle.value = { top: rect.bottom + 4 + 'px', left: rect.left + 'px' }
+}
+
+const onFilterMenuOutsideClick = (e) => {
+  if (filterMenuRef.value && !filterMenuRef.value.contains(e.target) &&
+      filterAddBtnRef.value && !filterAddBtnRef.value.contains(e.target)) {
+    closeFilterMenu()
+  }
+}
+watch(showFilterPanel, v => {
+  if (v) document.addEventListener('mousedown', onFilterMenuOutsideClick)
+  else document.removeEventListener('mousedown', onFilterMenuOutsideClick)
+})
 
 // ─── Preview panel ─────────────────────────────────────────────────────────────
 const previewRow      = ref(null)
@@ -260,11 +368,6 @@ const onColumnPanelOutsideClick = (e) => {
     showColumnPanel.value = false
   }
 }
-const onFilterPanelOutsideClick = (e) => {
-  if (filterPanelRef.value && !filterPanelRef.value.contains(e.target)) {
-    showFilterPanel.value = false
-  }
-}
 
 watch(showColumnPanel, async (v) => {
   if (v) {
@@ -281,10 +384,6 @@ watch(showColumnPanel, async (v) => {
     document.removeEventListener('mousedown', onColumnPanelOutsideClick)
   }
 })
-watch(showFilterPanel, (v) => {
-  if (v) document.addEventListener('mousedown', onFilterPanelOutsideClick)
-  else document.removeEventListener('mousedown', onFilterPanelOutsideClick)
-})
 
 // ─── Expose ───────────────────────────────────────────────────────────────────
 const getSelectedRows = () => tableRef.value?.getSelectedRows()
@@ -298,190 +397,199 @@ defineExpose({ getSelectedRows, reload, clearCache, exportTable, tableRef, close
 <template>
   <div class="relative" ref="containerRef">
 
-    <!-- Card único -->
-    <div class="bg-card border border-card-line rounded-2xl shadow-sm overflow-hidden">
+    <!-- Toolbar row (no card) -->
+    <div class="flex flex-wrap items-center gap-2 mb-2">
 
-      <!-- Toolbar -->
-      <div class="flex flex-wrap items-center gap-3 px-4 py-3 border-b border-card-line">
-        <div v-if="showSearch" class="flex-1 min-w-48">
-          <Forms.Input v-model="search" type="search" :placeholder="searchPlaceholder" :icon-left="IconSearch" size="sm" />
-        </div>
+      <!-- Search -->
+      <div v-if="showSearch" class="flex-1 min-w-48 max-w-xs">
+        <Forms.Input v-model="search" type="search" :placeholder="searchPlaceholder" :icon-left="IconSearch" size="sm" />
+      </div>
 
-        <div v-if="showFilters && hasFilterableColumns" class="relative">
-          <button
-            type="button"
-            @click="showFilterPanel = !showFilterPanel"
-            :class="[
-              'py-1.5 px-3 inline-flex items-center gap-2 text-sm font-medium rounded-lg border transition-colors',
-              showFilterPanel || activeFilterCount > 0
-                ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:border-blue-500 dark:text-blue-300'
-                : 'border-card-line bg-card text-muted-foreground-1 hover:bg-muted-hover'
-            ]"
-          >
-            <IconAdjustmentsHorizontal class="size-4" stroke="1.5" />
-            Filtros{{ activeFilterCount > 0 ? ` (${activeFilterCount})` : '' }}
-          </button>
-
-          <!-- Filter panel — anchored below button -->
-          <Transition
-            enter-active-class="transition ease-out duration-150"
-            enter-from-class="opacity-0 translate-y-1 scale-95"
-            enter-to-class="opacity-100 translate-y-0 scale-100"
-            leave-active-class="transition ease-in duration-100"
-            leave-from-class="opacity-100 translate-y-0 scale-100"
-            leave-to-class="opacity-0 translate-y-1 scale-95"
-          >
-            <div
-              v-if="showFilterPanel"
-              ref="filterPanelRef"
-              class="absolute top-full left-0 z-50 mt-1.5 bg-dropdown border border-dropdown-line rounded-xl shadow-2xl p-3 min-w-56 max-h-96 overflow-y-auto"
-            >
-              <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-3 px-1">Filtros</p>
-              <TableFilter v-model="activeFilters" :columns="filtersConfig" />
-            </div>
-          </Transition>
-        </div>
-
-        <slot name="toolbar" />
-
+      <!-- + Filtros button -->
+      <div v-if="showFilters && hasFilterableColumns" ref="filterAddBtnRef" class="relative">
         <button
-          ref="columnButtonRef"
           type="button"
-          @click="showColumnPanel = !showColumnPanel"
+          @click="toggleFilterMenu"
           :class="[
-            'py-1.5 px-3 inline-flex items-center gap-2 text-sm font-medium rounded-lg border transition-colors',
-            showColumnPanel
-              ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:border-blue-500 dark:text-blue-300'
+            'inline-flex items-center gap-1.5 py-1.5 px-3 text-sm font-medium rounded-lg border transition-colors',
+            activeFilterList.length
+              ? 'border-indigo-300 bg-indigo-50 text-indigo-700 dark:bg-indigo-900/20 dark:border-indigo-700 dark:text-indigo-300'
               : 'border-card-line bg-card text-muted-foreground-1 hover:bg-muted-hover'
           ]"
         >
-          <IconLayoutColumns class="size-4" />
-          Columnas
+          <IconPlus class="size-3.5" />
+          Filtros{{ activeFilterList.length ? ` (${activeFilterList.length})` : '' }}
         </button>
-
-        <TableExportable v-if="showExport" :table-ref="tableRef" :name="resolvedName" :columns="columns" />
       </div>
 
-      <!-- Contenido: tabla siempre full width + preview overlay -->
-      <div class="relative overflow-hidden">
+      <!-- Slot for custom toolbar buttons -->
+      <slot name="toolbar" />
 
-        <!-- Tabla -->
-        <Table
-          ref="tableRef"
-          :endpoint="resolvedEndpoint"
-          :columns="columns"
-          :name="resolvedName"
-          :params="mergedParams"
-          :search="search"
-          :checkable="checkable"
-          :cached="cached"
-          :show-reload-button="showReloadButton"
-          :click-row-to-open="clickRowToOpen"
-          :preview-row-id="previewRow?.id ?? null"
-          :preview-mode="!!previewEnabled"
-          @row-click="handleRowClick"
-          @loaded="handleLoaded"
-          @page-change="closePreview"
-          @per-page-change="closePreview"
-        >
-          <template v-for="(_, name) in forwardedSlots" #[name]="slotProps">
-            <slot :name="name" v-bind="slotProps ?? {}" />
-          </template>
-        </Table>
+      <!-- Columnas button -->
+      <button
+        ref="columnButtonRef"
+        type="button"
+        @click="showColumnPanel = !showColumnPanel"
+        :class="[
+          'py-1.5 px-3 inline-flex items-center gap-2 text-sm font-medium rounded-lg border transition-colors',
+          showColumnPanel
+            ? 'border-indigo-300 bg-indigo-50 text-indigo-700 dark:bg-indigo-900/20 dark:border-indigo-700 dark:text-indigo-300'
+            : 'border-card-line bg-card text-muted-foreground-1 hover:bg-muted-hover'
+        ]"
+      >
+        <IconLayoutColumns class="size-4" />
+        Columnas
+      </button>
 
-        <!-- Preview panel overlay — slides in from right, tapa la tabla -->
-        <Transition
-          :enter-active-class="previewFromCache ? '' : 'transition ease-out duration-200'"
-          :enter-from-class="previewFromCache ? '' : 'opacity-0 translate-x-6'"
-          :enter-to-class="previewFromCache ? '' : 'opacity-100 translate-x-0'"
-          leave-active-class="transition ease-in duration-150"
-          leave-from-class="opacity-100 translate-x-0"
-          leave-to-class="opacity-0 translate-x-6"
+      <TableExportable v-if="showExport" :table-ref="tableRef" :name="resolvedName" :columns="columns" />
+    </div>
+
+    <!-- Filter chips row (shown when filters active) -->
+    <div v-if="activeFilterList.length" class="flex flex-wrap items-center gap-1.5 mb-2">
+      <div
+        v-for="chip in activeFilterList"
+        :key="chip.key"
+        class="inline-flex items-center text-xs rounded-lg border border-card-line bg-card overflow-hidden"
+      >
+        <span class="px-2.5 py-1 text-foreground font-medium border-r border-card-line bg-surface">{{ chip.label }}</span>
+        <span class="px-2 py-1 text-muted-foreground">{{ chip.displayOp }}</span>
+        <button
+          type="button"
+          @click.stop="openEditFilter(chip.col)"
+          class="inline-flex items-center gap-1 px-2 py-1 text-indigo-600 dark:text-indigo-400 font-medium hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors border-x border-card-line"
         >
+          {{ chip.displayVal }}
+          <IconChevronDown class="size-3 opacity-60" />
+        </button>
+        <button
+          type="button"
+          @click.stop="removeFilter(chip.key)"
+          class="px-1.5 py-1 text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+        >
+          <IconX class="size-3" />
+        </button>
+      </div>
+    </div>
+
+    <!-- Table + preview overlay inside a minimal border box -->
+    <div class="relative overflow-hidden rounded-xl border border-card-line">
+
+      <!-- Tabla -->
+      <Table
+        ref="tableRef"
+        :endpoint="resolvedEndpoint"
+        :columns="columns"
+        :name="resolvedName"
+        :params="mergedParams"
+        :search="search"
+        :checkable="checkable"
+        :cached="cached"
+        :show-reload-button="showReloadButton"
+        :click-row-to-open="clickRowToOpen"
+        :preview-row-id="previewRow?.id ?? null"
+        :preview-mode="!!previewEnabled"
+        @row-click="handleRowClick"
+        @loaded="handleLoaded"
+        @page-change="closePreview"
+        @per-page-change="closePreview"
+      >
+        <template v-for="(_, name) in forwardedSlots" #[name]="slotProps">
+          <slot :name="name" v-bind="slotProps ?? {}" />
+        </template>
+      </Table>
+
+      <!-- Preview panel overlay — slides in from right, tapa la tabla -->
+      <Transition
+        :enter-active-class="previewFromCache ? '' : 'transition ease-out duration-200'"
+        :enter-from-class="previewFromCache ? '' : 'opacity-0 translate-x-6'"
+        :enter-to-class="previewFromCache ? '' : 'opacity-100 translate-x-0'"
+        leave-active-class="transition ease-in duration-150"
+        leave-from-class="opacity-100 translate-x-0"
+        leave-to-class="opacity-0 translate-x-6"
+      >
+        <div
+          v-if="previewRow && previewEnabled"
+          ref="previewPanelRef"
+          class="absolute top-0 right-0 z-30 flex bg-card border-l border-card-line shadow-[-4px_0_16px_rgba(0,0,0,0.06)]"
+          :style="{ width: (100 - currentRatio) + '%', bottom: paginationHeight + 'px' }"
+        >
+          <!-- Resize handle -->
           <div
-            v-if="previewRow && previewEnabled"
-            ref="previewPanelRef"
-            class="absolute top-0 right-0 z-30 flex bg-card border-l border-card-line shadow-[-4px_0_16px_rgba(0,0,0,0.06)]"
-            :style="{ width: (100 - currentRatio) + '%', bottom: paginationHeight + 'px' }"
-          >
-            <!-- Resize handle -->
-            <div
-              class="w-1 shrink-0 cursor-col-resize bg-surface hover:bg-indigo-300 dark:hover:bg-indigo-600 transition-colors"
-              @mousedown="startResize"
-            />
-            <!-- Preview -->
-            <div class="flex flex-col flex-1 overflow-hidden">
+            class="w-1 shrink-0 cursor-col-resize bg-surface hover:bg-indigo-300 dark:hover:bg-indigo-600 transition-colors"
+            @mousedown="startResize"
+          />
+          <!-- Preview -->
+          <div class="flex flex-col flex-1 overflow-hidden">
 
-              <!-- Barra de acciones del preview -->
-              <div class="shrink-0 flex items-center justify-between gap-2 px-3 py-2 border-b border-card-line">
-                <div class="flex-1 min-w-0">
-                  <slot name="preview-header" :row="previewRow" :close="closePreview" />
-                </div>
-                <div class="flex items-center gap-1 shrink-0">
-                  <button
-                    type="button"
-                    class="inline-flex items-center justify-center size-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted-hover transition-colors"
-                    title="Minimizar"
-                    @click.stop="minimizePreview"
-                  >
-                    <IconMinus class="size-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    class="inline-flex items-center justify-center size-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted-hover transition-colors"
-                    title="Cerrar"
-                    @click.stop="closePreview"
-                  >
-                    <IconX class="size-3.5" />
-                  </button>
-                </div>
+            <!-- Barra de acciones del preview -->
+            <div class="shrink-0 flex items-center justify-between gap-2 px-3 py-2 border-b border-card-line">
+              <div class="flex-1 min-w-0">
+                <slot name="preview-header" :row="previewRow" :close="closePreview" />
               </div>
-
-              <!-- Scrollable content -->
-              <div class="flex-1 overflow-y-auto min-h-0">
-                <slot v-if="previewTab === 'datos'" name="preview" :row="previewRow" :close="closePreview" />
-                <Table.PreviewTimeline
-                  v-else-if="previewTab === 'bitacora' && resolvedHistoryEndpoint"
-                  :endpoint="resolvedHistoryEndpoint"
-                />
-              </div>
-
-              <!-- Tabs — bottom -->
-              <div v-if="hasHistory" class="shrink-0 flex border-t border-card-line">
+              <div class="flex items-center gap-1 shrink-0">
                 <button
                   type="button"
-                  @click="previewTab = 'datos'"
-                  :class="[
-                    'flex-1 py-2.5 text-xs font-semibold transition-colors border-r border-card-line border-t-2 -mt-px',
-                    previewTab === 'datos'
+                  class="inline-flex items-center justify-center size-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted-hover transition-colors"
+                  title="Minimizar"
+                  @click.stop="minimizePreview"
+                >
+                  <IconMinus class="size-3.5" />
+                </button>
+                <button
+                  type="button"
+                  class="inline-flex items-center justify-center size-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted-hover transition-colors"
+                  title="Cerrar"
+                  @click.stop="closePreview"
+                >
+                  <IconX class="size-3.5" />
+                </button>
+              </div>
+            </div>
+
+            <!-- Scrollable content -->
+            <div class="flex-1 overflow-y-auto min-h-0">
+              <slot v-if="previewTab === 'datos'" name="preview" :row="previewRow" :close="closePreview" />
+              <Table.PreviewTimeline
+                v-else-if="previewTab === 'bitacora' && resolvedHistoryEndpoint"
+                :endpoint="resolvedHistoryEndpoint"
+              />
+            </div>
+
+            <!-- Tabs — bottom -->
+            <div v-if="hasHistory" class="shrink-0 flex border-t border-card-line">
+              <button
+                type="button"
+                @click="previewTab = 'datos'"
+                :class="[
+                  'flex-1 py-2.5 text-xs font-semibold transition-colors border-r border-card-line border-t-2 -mt-px',
+                  previewTab === 'datos'
+                    ? 'border-t-card text-foreground'
+                    : 'border-t-transparent text-muted-foreground hover:text-foreground hover:bg-muted-hover'
+                ]"
+              >
+                Datos
+              </button>
+              <button
+                type="button"
+                @click="resolvedHistoryEndpoint && (previewTab = 'bitacora')"
+                :disabled="!resolvedHistoryEndpoint"
+                :class="[
+                  'flex-1 py-2.5 text-xs font-semibold transition-colors border-t-2 -mt-px',
+                  !resolvedHistoryEndpoint
+                    ? 'border-t-transparent text-muted-foreground/40 cursor-not-allowed'
+                    : previewTab === 'bitacora'
                       ? 'border-t-card text-foreground'
                       : 'border-t-transparent text-muted-foreground hover:text-foreground hover:bg-muted-hover'
-                  ]"
-                >
-                  Datos
-                </button>
-                <button
-                  type="button"
-                  @click="resolvedHistoryEndpoint && (previewTab = 'bitacora')"
-                  :disabled="!resolvedHistoryEndpoint"
-                  :class="[
-                    'flex-1 py-2.5 text-xs font-semibold transition-colors border-t-2 -mt-px',
-                    !resolvedHistoryEndpoint
-                      ? 'border-t-transparent text-muted-foreground/40 cursor-not-allowed'
-                      : previewTab === 'bitacora'
-                        ? 'border-t-card text-foreground'
-                        : 'border-t-transparent text-muted-foreground hover:text-foreground hover:bg-muted-hover'
-                  ]"
-                >
-                  Bitácora
-                </button>
-              </div>
-
+                ]"
+              >
+                Bitácora
+              </button>
             </div>
-          </div>
-        </Transition>
 
-      </div>
+          </div>
+        </div>
+      </Transition>
+
     </div>
 
     <!-- ── Floating mini-preview (dock expand, estilo Gmail) ── -->
@@ -520,6 +628,125 @@ defineExpose({ getSelectedRows, reload, clearCache, exportTable, tableRef, close
           <div class="flex-1 overflow-y-auto min-h-0">
             <slot name="preview" :row="floatingItem.row" :close="() => undockItem(floatingItem.id)" />
           </div>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- Filter menu — teleported to body -->
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition ease-out duration-150"
+        enter-from-class="opacity-0 translate-y-1 scale-95"
+        enter-to-class="opacity-100 translate-y-0 scale-100"
+        leave-active-class="transition ease-in duration-100"
+        leave-from-class="opacity-100 translate-y-0 scale-100"
+        leave-to-class="opacity-0 translate-y-1 scale-95"
+      >
+        <div
+          v-if="showFilterPanel"
+          ref="filterMenuRef"
+          class="fixed z-[60] bg-dropdown border border-dropdown-line rounded-xl shadow-2xl min-w-52 overflow-hidden"
+          :style="filterMenuStyle"
+        >
+
+          <!-- Step 1: column picker -->
+          <template v-if="filterMenuStep === 'columns'">
+            <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-3 pt-2.5 pb-1">Filtrar por</p>
+            <div class="pb-1.5">
+              <button
+                v-for="col in filtersConfig"
+                :key="col.key"
+                type="button"
+                @click.stop="selectFilterColumn(col)"
+                class="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted-hover transition-colors"
+              >
+                <span class="flex-1 text-left text-foreground">{{ col.label }}</span>
+                <span v-if="activeFilters[col.key]" class="text-[10px] font-semibold text-indigo-500 uppercase">activo</span>
+              </button>
+            </div>
+          </template>
+
+          <!-- Step 2: value input -->
+          <template v-else-if="filterMenuStep === 'value' && pendingCol">
+            <div class="flex items-center gap-2 px-3 py-2 border-b border-card-line bg-surface">
+              <button
+                type="button"
+                @click.stop="filterMenuStep = 'columns'"
+                class="text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <IconChevronLeft class="size-4" />
+              </button>
+              <span class="text-sm font-medium text-foreground">{{ pendingCol.label }}</span>
+            </div>
+            <div class="p-3 space-y-2.5">
+
+              <!-- text -->
+              <input
+                v-if="pendingCol.filterType === 'text'"
+                v-model="pendingValue"
+                type="text"
+                autofocus
+                @keydown.enter.stop="applyPendingFilter"
+                @keydown.escape.stop="closeFilterMenu"
+                placeholder="Buscar..."
+                class="w-full rounded-lg border border-card-line bg-card text-foreground py-1.5 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+              />
+
+              <!-- select -->
+              <div v-else-if="pendingCol.filterType === 'select'" class="space-y-0.5">
+                <button
+                  v-for="opt in pendingCol.filterOptions"
+                  :key="opt.value"
+                  type="button"
+                  @click.stop="pendingValue = opt.value; applyPendingFilter()"
+                  :class="[
+                    'w-full flex items-center gap-2 px-2.5 py-1.5 text-sm rounded-lg transition-colors text-left',
+                    pendingValue === opt.value
+                      ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-300'
+                      : 'hover:bg-muted-hover text-foreground'
+                  ]"
+                >
+                  <span class="flex-1">{{ opt.label }}</span>
+                  <IconCheck v-if="pendingValue === opt.value" class="size-3.5 shrink-0 text-indigo-500" />
+                </button>
+              </div>
+
+              <!-- daterange -->
+              <div v-else-if="pendingCol.filterType === 'daterange'" class="space-y-2">
+                <div class="flex gap-1">
+                  <button
+                    v-for="op in dateOps"
+                    :key="op.value"
+                    type="button"
+                    @click.stop="pendingDateOp = op.value"
+                    :class="[
+                      'flex-1 py-1 text-xs rounded-lg border transition-colors',
+                      pendingDateOp === op.value
+                        ? 'border-indigo-400 bg-indigo-50 text-indigo-700 dark:bg-indigo-900/20 dark:text-indigo-300'
+                        : 'border-card-line text-muted-foreground hover:bg-muted-hover'
+                    ]"
+                  >
+                    {{ op.label }}
+                  </button>
+                </div>
+                <template v-if="pendingDateOp === 'between'">
+                  <input type="date" v-model="pendingValue.from" class="w-full rounded-lg border border-card-line bg-card text-foreground py-1.5 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+                  <input type="date" v-model="pendingValue.to" class="w-full rounded-lg border border-card-line bg-card text-foreground py-1.5 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+                </template>
+                <input v-else type="date" v-model="pendingValue.singleDate" class="w-full rounded-lg border border-card-line bg-card text-foreground py-1.5 px-3 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-500" />
+              </div>
+
+              <button
+                v-if="pendingCol.filterType !== 'select'"
+                type="button"
+                @click.stop="applyPendingFilter"
+                class="w-full py-1.5 text-sm font-medium text-center rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors"
+              >
+                Aplicar
+              </button>
+            </div>
+          </template>
+
         </div>
       </Transition>
     </Teleport>
