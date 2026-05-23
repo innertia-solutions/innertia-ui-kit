@@ -4,7 +4,7 @@ export default defineNuxtConfig({
   extends: ['@innertia-solutions/nuxt-core'],
   modules: [
     '@pinia/nuxt',
-    'pinia-plugin-persistedstate/nuxt',
+    'pinia-plugin-persistedstate/nuxt', // required for dockedPreviews store persistence
   ],
   css: ['@innertia-solutions/nuxt-theme-spark/spark.css'],
   components: [
