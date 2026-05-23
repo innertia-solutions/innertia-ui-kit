@@ -1,29 +1,43 @@
 <script setup>
 import { IconSearch, IconLayoutColumns, IconGripVertical, IconMinus, IconMaximize, IconX, IconPlus, IconChevronLeft, IconCheck, IconChevronDown, IconExternalLink, IconTrash } from '@tabler/icons-vue'
+import Table from './index.vue'
 
 const props = defineProps({
-  table:             { type: Object,  default: null },
-  endpoint:          { type: String,  default: '' },
-  columns:           { type: Array,   required: true },
-  name:              { type: String,  default: '' },
-  params:            { type: Object,  default: () => ({}) },
-  checkable:         { type: Boolean, default: false },
-  cached:            { type: Boolean, default: false },
-  showReloadButton:  { type: Boolean, default: true },
-  clickRowToOpen:    { type: Boolean, default: false },
-  searchPlaceholder: { type: String,  default: 'Buscar...' },
-  showSearch:        { type: Boolean, default: true },
-  showFilters:       { type: Boolean, default: true },
-  showExport:        { type: Boolean, default: true },
-  filters:           { type: Array,   default: () => [] },
-  splitRatio:        { type: Number,           default: 60 },
-  autoClosePreview:  { type: Boolean,          default: true },
-  previewHref:       { type: [String, Function], default: null },   // url fija o (row) => url
-  previewDeletable:  { type: Boolean,          default: false },
+  table:                   { type: Object,  default: null },
+  endpoint:                { type: String,  default: '' },
+  columns:                 { type: Array,   required: true },
+  name:                    { type: String,  default: '' },
+  params:                  { type: Object,  default: () => ({}) },
+  checkable:               { type: Boolean, default: false },
+  cached:                  { type: Boolean, default: false },
+  showReloadButton:        { type: Boolean, default: true },
+  clickRowToOpen:          { type: Boolean, default: false },
+  searchPlaceholder:       { type: String,  default: 'Buscar...' },
+  showSearch:              { type: Boolean, default: true },
+  showFilters:             { type: Boolean, default: true },
+  showExport:              { type: Boolean, default: true },
+  filters:                 { type: Array,   default: () => [] },
+  splitRatio:              { type: Number,           default: 60 },
+  autoClosePreview:        { type: Boolean,          default: true },
+  previewHref:             { type: [String, Function], default: null },   // url fija o (row) => url
+  previewDeletable:        { type: Boolean,          default: false },
+  defaultPinnedColumns:    { type: Object,  default: null }, // { left?: string[], right?: string[] }
+  persistPreferences:      { type: Boolean, default: true }, // persist column prefs in backend
 })
 
 const resolvedEndpoint = computed(() => props.table?.endpoint ?? props.endpoint)
 const resolvedName     = computed(() => props.table?.name     ?? props.name)
+
+// ─── Table preferences (column pinning, visibility, order) ───────────────────
+const tablePrefName = computed(() => resolvedName.value || 'default')
+const { preferences: tablePrefs, load: loadPrefs, save: savePrefs } = useTablePreferences(tablePrefName.value)
+
+// Resolved initial pinned columns: merge defaultPinnedColumns with saved preferences
+const resolvedPinnedColumns = computed(() => {
+  const saved = tablePrefs.value.pinning
+  if (saved) return saved
+  return props.defaultPinnedColumns ?? null
+})
 
 const emit = defineEmits(['row-click', 'loaded', 'preview-delete'])
 const slots = useSlots()
@@ -35,6 +49,7 @@ const forwardedSlots = computed(() => {
 const search        = ref('')
 const activeFilters = ref({})
 const tableRef      = ref(null)
+const prefsLoaded   = ref(false)
 
 // ─── Filter config ─────────────────────────────────────────────────────────────
 const filtersConfig = computed(() =>
@@ -402,6 +417,24 @@ onMounted(async () => {
       }
     } catch {}
   }
+
+  // Load column preferences from backend
+  if (props.persistPreferences && resolvedName.value) {
+    await loadPrefs()
+    // Apply saved visibility
+    if (tablePrefs.value.visibility && tableRef.value?.table) {
+      tableRef.value.table.setColumnVisibility(tablePrefs.value.visibility)
+    }
+    // Apply saved column order
+    if (tablePrefs.value.order?.length && tableRef.value?.setColumnOrder) {
+      tableRef.value.setColumnOrder(tablePrefs.value.order)
+    }
+    // Apply saved pinning
+    if (tablePrefs.value.pinning && tableRef.value?.table) {
+      tableRef.value.table.setColumnPinning(tablePrefs.value.pinning)
+    }
+  }
+  prefsLoaded.value = true
 })
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onEsc)
@@ -422,24 +455,105 @@ const orderedColumns = computed(() => {
 })
 
 let draggedKey = null
-const dragOverKey = ref(null)
+let draggedFromSection = null // 'left' | 'center' | 'right'
+const dragOverKey     = ref(null)
+const dragOverSection = ref(null)
 
-const onDragStart = (key) => { draggedKey = key }
-const onDragOver  = (e, key) => { e.preventDefault(); dragOverKey.value = key }
-const onDragLeave = () => { dragOverKey.value = null }
-const onDrop = (key) => {
-  if (!draggedKey || draggedKey === key) return
-  const ids = tableRef.value?.table.getAllLeafColumns().map(c => c.id) ?? []
-  const from = ids.indexOf(draggedKey)
-  const to   = ids.indexOf(key)
-  if (from < 0 || to < 0) return
-  ids.splice(from, 1)
-  ids.splice(to, 0, draggedKey)
-  const selIdx = ids.indexOf('select')
-  if (selIdx > 0) { ids.splice(selIdx, 1); ids.unshift('select') }
-  tableRef.value?.setColumnOrder(ids)
+// ─── Columns grouped by pinning section ───────────────────────────────────────
+const columnsBySection = computed(() => {
+  // reactive dependency on pinning state
+  const _pin = tableRef.value?.columnPinning?.value
+  const cols = orderedColumns.value
+  if (!tableRef.value?.table) return { left: [], center: cols, right: [] }
+
+  const left = [], center = [], right = []
+  for (const col of cols) {
+    const pinned = tableRef.value.table.getColumn(col.key)?.getIsPinned()
+    if (pinned === 'left')       left.push(col)
+    else if (pinned === 'right') right.push(col)
+    else                         center.push(col)
+  }
+  return { left, center, right }
+})
+
+const resetColDrag = () => {
   draggedKey = null
+  draggedFromSection = null
   dragOverKey.value = null
+  dragOverSection.value = null
+}
+
+const onDragStart = (key, section) => { draggedKey = key; draggedFromSection = section }
+const onDragLeave = () => { dragOverKey.value = null }
+
+// Auto-pin anchor columns when any column enters/leaves a pinned section:
+//   Left section  → checkbox (select) is always pinned left
+//   Right section → actions column is always pinned right
+// Called AFTER pinColumn(draggedKey) so columnsBySection reflects the new state.
+const enforceAnchorPins = (targetSection) => {
+  const t = tableRef.value
+  if (!t) return
+  const from = draggedFromSection // still valid before resetColDrag()
+
+  // ─── Left anchor: select checkbox ────────────────────────────────────────────
+  // Order (select always first) is enforced by a watch in Table/index.vue
+  if (props.checkable && t.table?.getColumn('select')) {
+    if (targetSection === 'left') {
+      t.pinColumn('select', 'left')
+    } else if (from === 'left' && columnsBySection.value.left.length === 0) {
+      t.pinColumn('select', false)
+    }
+  }
+
+  // ─── Right anchor: actions ────────────────────────────────────────────────────
+  // 'actions' has label:'' so it's excluded from orderedColumns/columnsBySection.
+  // We only auto-pin it if it exists in the columns definition.
+  const hasActions = props.columns.some(c => c.key === 'actions')
+  if (hasActions) {
+    if (targetSection === 'right') {
+      // Something was pinned right → force-pin actions too
+      t.pinColumn('actions', 'right')
+    } else if (from === 'right') {
+      // Something left the right section → unpin actions if no more right columns
+      if (columnsBySection.value.right.length === 0) t.pinColumn('actions', false)
+    }
+  }
+}
+
+// Drop on a specific column row (handles both reorder + section change)
+const onDrop = (targetKey, targetSection) => {
+  if (!draggedKey) { resetColDrag(); return }
+
+  if (draggedFromSection !== targetSection) {
+    // Change pinning
+    const pinVal = targetSection === 'left' ? 'left' : targetSection === 'right' ? 'right' : false
+    tableRef.value?.pinColumn(draggedKey, pinVal)
+    enforceAnchorPins(targetSection)
+    persistCurrentPrefs()
+  } else if (draggedKey !== targetKey) {
+    // Reorder within section
+    const ids = tableRef.value?.table.getAllLeafColumns().map(c => c.id) ?? []
+    const from = ids.indexOf(draggedKey)
+    const to   = ids.indexOf(targetKey)
+    if (from >= 0 && to >= 0) {
+      ids.splice(from, 1)
+      ids.splice(to, 0, draggedKey)
+      const selIdx = ids.indexOf('select')
+      if (selIdx > 0) { ids.splice(selIdx, 1); ids.unshift('select') }
+      tableRef.value?.setColumnOrder(ids)
+    }
+  }
+  resetColDrag()
+}
+
+// Drop on the section zone itself (empty area) — only changes pinning
+const onDropSection = (targetSection) => {
+  if (!draggedKey || draggedFromSection === targetSection) { resetColDrag(); return }
+  const pinVal = targetSection === 'left' ? 'left' : targetSection === 'right' ? 'right' : false
+  tableRef.value?.pinColumn(draggedKey, pinVal)
+  enforceAnchorPins(targetSection)
+  persistCurrentPrefs()
+  resetColDrag()
 }
 
 const onColumnPanelOutsideClick = (e) => {
@@ -470,13 +584,55 @@ watch(showColumnPanel, async (v) => {
   }
 })
 
+// ─── Persist column preferences when they change ─────────────────────────────
+const persistCurrentPrefs = () => {
+  if (!props.persistPreferences || !resolvedName.value || !prefsLoaded.value || !tableRef.value) return
+  const tanTable = tableRef.value.table
+  if (!tanTable) return
+
+  const visibility = Object.fromEntries(
+    tanTable.getAllLeafColumns()
+      .filter(c => c.id !== 'select')
+      .map(c => [c.id, c.getIsVisible()])
+  )
+  const order = tanTable.getAllLeafColumns().map(c => c.id).filter(id => id !== 'select')
+  const rawPinning = tableRef.value.columnPinning?.value ?? tanTable.getState().columnPinning
+  const pinning = rawPinning
+    ? { left: rawPinning.left ?? [], right: rawPinning.right ?? [] }
+    : { left: [], right: [] }
+
+  savePrefs({ visibility, order, pinning })
+}
+
+// Watch column pinning changes via tableRef
+watch(
+  () => tableRef.value?.columnPinning?.value,
+  () => { if (prefsLoaded.value) persistCurrentPrefs() },
+  { deep: true }
+)
+
+// Watch column visibility changes
+watch(
+  () => tableRef.value?.table?.getState()?.columnVisibility,
+  () => { if (prefsLoaded.value) persistCurrentPrefs() },
+  { deep: true }
+)
+
+// Watch column order changes
+watch(
+  () => tableRef.value?.table?.getState()?.columnOrder,
+  () => { if (prefsLoaded.value) persistCurrentPrefs() },
+  { deep: true }
+)
+
 // ─── Expose ───────────────────────────────────────────────────────────────────
 const getSelectedRows = () => tableRef.value?.getSelectedRows()
 const reload          = () => tableRef.value?.reload()
 const clearCache      = () => tableRef.value?.clearCache()
 const exportTable     = (format, allPages, filteredRows) => tableRef.value?.exportTable(format, allPages, filteredRows)
+const pinColumn       = (key, position) => tableRef.value?.pinColumn(key, position)
 
-defineExpose({ getSelectedRows, reload, clearCache, exportTable, tableRef, closePreview })
+defineExpose({ getSelectedRows, reload, clearCache, exportTable, tableRef, closePreview, pinColumn })
 </script>
 
 <template>
@@ -573,6 +729,7 @@ defineExpose({ getSelectedRows, reload, clearCache, exportTable, tableRef, close
         :click-row-to-open="clickRowToOpen"
         :preview-row-id="previewRow?.id ?? null"
         :preview-mode="!!previewEnabled"
+        :pinned-columns="resolvedPinnedColumns"
         @row-click="handleRowClick"
         @loaded="handleLoaded"
         @page-change="closePreview"
@@ -917,35 +1074,142 @@ defineExpose({ getSelectedRows, reload, clearCache, exportTable, tableRef, close
         <div
           v-if="showColumnPanel"
           ref="columnPanelRef"
-          class="fixed z-50 bg-dropdown border border-dropdown-line rounded-xl shadow-2xl p-3 min-w-56 max-h-80 overflow-y-auto"
+          class="fixed z-50 bg-dropdown border border-dropdown-line rounded-xl shadow-2xl min-w-64 max-h-[480px] overflow-y-auto"
           :style="columnPanelStyle"
         >
-          <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2 px-1">
-            Columnas visibles
-          </p>
-          <div
-            v-for="col in orderedColumns"
-            :key="col.key"
-            draggable="true"
-            @dragstart="onDragStart(col.key)"
-            @dragover="(e) => onDragOver(e, col.key)"
-            @dragleave="onDragLeave"
-            @drop="onDrop(col.key)"
-            class="flex items-center gap-2 py-1.5 px-2 rounded-lg select-none transition-colors"
-            :class="dragOverKey === col.key
-              ? 'bg-blue-50 dark:bg-blue-900/20 ring-1 ring-blue-300 dark:ring-blue-700'
-              : 'hover:bg-muted-hover cursor-grab'"
-          >
-            <IconGripVertical class="size-4 text-muted-foreground-2 shrink-0" />
-            <input
-              type="checkbox"
-              :checked="tableRef?.table.getColumn(col.key)?.getIsVisible() ?? true"
-              @change="tableRef?.table.getColumn(col.key)?.toggleVisibility()"
-              @click.stop
-              class="rounded border-card-line bg-surface shrink-0 cursor-pointer"
-            />
-            <span class="text-sm text-foreground truncate">{{ col.label }}</span>
+
+          <!-- ── Sección: Fija a la izquierda ── -->
+          <div class="p-2 pb-1">
+            <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1 pb-1.5 flex items-center gap-1.5">
+              <span class="size-1.5 rounded-full bg-indigo-400 inline-block"></span>
+              Fija a la izquierda
+            </p>
+            <div
+              class="rounded-lg min-h-[34px] transition-colors"
+              :class="dragOverSection === 'left' && draggedKey && !columnsBySection.left.find(c => c.key === draggedKey)
+                ? 'bg-indigo-50 dark:bg-indigo-900/20 ring-1 ring-indigo-300 dark:ring-indigo-700'
+                : columnsBySection.left.length === 0 ? 'border border-dashed border-card-line' : ''"
+              @dragover.prevent="dragOverSection = 'left'"
+              @dragleave="dragOverSection = null"
+              @drop.stop="onDropSection('left')"
+            >
+              <p v-if="columnsBySection.left.length === 0" class="flex items-center justify-center h-[34px] text-xs text-muted-foreground-2 italic select-none">
+                Arrastra columnas aquí
+              </p>
+              <div
+                v-for="col in columnsBySection.left"
+                :key="col.key"
+                draggable="true"
+                @dragstart="onDragStart(col.key, 'left')"
+                @dragover.prevent="dragOverSection = 'left'; dragOverKey = col.key"
+                @dragleave="dragOverKey = null"
+                @drop.stop="onDrop(col.key, 'left')"
+                class="flex items-center gap-2 py-1.5 px-2 rounded-lg select-none cursor-grab transition-colors"
+                :class="dragOverKey === col.key ? 'bg-indigo-50 dark:bg-indigo-900/20' : 'hover:bg-muted-hover'"
+              >
+                <IconGripVertical class="size-4 text-muted-foreground-2 shrink-0" />
+                <input
+                  type="checkbox"
+                  :checked="tableRef?.table.getColumn(col.key)?.getIsVisible() ?? true"
+                  @change="tableRef?.table.getColumn(col.key)?.toggleVisibility(); persistCurrentPrefs()"
+                  @click.stop
+                  class="rounded border-card-line bg-surface shrink-0 cursor-pointer"
+                />
+                <span class="text-sm text-foreground truncate flex-1">{{ col.label }}</span>
+                <span class="size-1.5 rounded-full bg-indigo-400 shrink-0 opacity-60" />
+              </div>
+            </div>
           </div>
+
+          <div class="mx-3 border-t border-dropdown-line" />
+
+          <!-- ── Sección: Columnas libres ── -->
+          <div class="p-2 py-1">
+            <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1 pb-1.5 flex items-center gap-1.5">
+              <span class="size-1.5 rounded-full bg-muted-foreground-2 inline-block"></span>
+              Columnas
+            </p>
+            <div
+              class="rounded-lg min-h-[34px] transition-colors"
+              :class="dragOverSection === 'center' && draggedKey && !columnsBySection.center.find(c => c.key === draggedKey)
+                ? 'bg-muted/60 ring-1 ring-border'
+                : ''"
+              @dragover.prevent="dragOverSection = 'center'"
+              @dragleave="dragOverSection = null"
+              @drop.stop="onDropSection('center')"
+            >
+              <p v-if="columnsBySection.center.length === 0" class="flex items-center justify-center h-[34px] text-xs text-muted-foreground-2 italic select-none">
+                Sin columnas libres
+              </p>
+              <div
+                v-for="col in columnsBySection.center"
+                :key="col.key"
+                draggable="true"
+                @dragstart="onDragStart(col.key, 'center')"
+                @dragover.prevent="dragOverSection = 'center'; dragOverKey = col.key"
+                @dragleave="dragOverKey = null"
+                @drop.stop="onDrop(col.key, 'center')"
+                class="flex items-center gap-2 py-1.5 px-2 rounded-lg select-none cursor-grab transition-colors"
+                :class="dragOverKey === col.key ? 'bg-blue-50 dark:bg-blue-900/20 ring-1 ring-blue-200 dark:ring-blue-700' : 'hover:bg-muted-hover'"
+              >
+                <IconGripVertical class="size-4 text-muted-foreground-2 shrink-0" />
+                <input
+                  type="checkbox"
+                  :checked="tableRef?.table.getColumn(col.key)?.getIsVisible() ?? true"
+                  @change="tableRef?.table.getColumn(col.key)?.toggleVisibility(); persistCurrentPrefs()"
+                  @click.stop
+                  class="rounded border-card-line bg-surface shrink-0 cursor-pointer"
+                />
+                <span class="text-sm text-foreground truncate flex-1">{{ col.label }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="mx-3 border-t border-dropdown-line" />
+
+          <!-- ── Sección: Fija a la derecha ── -->
+          <div class="p-2 pt-1">
+            <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-1 pb-1.5 flex items-center gap-1.5">
+              <span class="size-1.5 rounded-full bg-amber-400 inline-block"></span>
+              Fija a la derecha
+            </p>
+            <div
+              class="rounded-lg min-h-[34px] transition-colors"
+              :class="dragOverSection === 'right' && draggedKey && !columnsBySection.right.find(c => c.key === draggedKey)
+                ? 'bg-amber-50 dark:bg-amber-900/20 ring-1 ring-amber-300 dark:ring-amber-700'
+                : columnsBySection.right.length === 0 ? 'border border-dashed border-card-line' : ''"
+              @dragover.prevent="dragOverSection = 'right'"
+              @dragleave="dragOverSection = null"
+              @drop.stop="onDropSection('right')"
+            >
+              <p v-if="columnsBySection.right.length === 0" class="flex items-center justify-center h-[34px] text-xs text-muted-foreground-2 italic select-none">
+                Arrastra columnas aquí
+              </p>
+              <div
+                v-for="col in columnsBySection.right"
+                :key="col.key"
+                draggable="true"
+                @dragstart="onDragStart(col.key, 'right')"
+                @dragover.prevent="dragOverSection = 'right'; dragOverKey = col.key"
+                @dragleave="dragOverKey = null"
+                @drop.stop="onDrop(col.key, 'right')"
+                class="flex items-center gap-2 py-1.5 px-2 rounded-lg select-none cursor-grab transition-colors"
+                :class="dragOverKey === col.key ? 'bg-amber-50 dark:bg-amber-900/20' : 'hover:bg-muted-hover'"
+              >
+                <IconGripVertical class="size-4 text-muted-foreground-2 shrink-0" />
+                <input
+                  type="checkbox"
+                  :checked="tableRef?.table.getColumn(col.key)?.getIsVisible() ?? true"
+                  @change="tableRef?.table.getColumn(col.key)?.toggleVisibility(); persistCurrentPrefs()"
+                  @click.stop
+                  class="rounded border-card-line bg-surface shrink-0 cursor-pointer"
+                />
+                <span class="text-sm text-foreground truncate flex-1">{{ col.label }}</span>
+                <span class="size-1.5 rounded-full bg-amber-400 shrink-0 opacity-60" />
+              </div>
+            </div>
+          </div>
+
         </div>
       </Transition>
     </Teleport>

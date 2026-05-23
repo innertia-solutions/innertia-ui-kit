@@ -6,31 +6,34 @@ import {
   IconChevronDown,
   IconReload,
   IconBolt,
+  IconPin,
 } from '@tabler/icons-vue'
 
 const props = defineProps({
   endpoint: { type: String, required: true },
-  columns: { type: Array, required: true },
+  columns: { type: Array, required: true }, // [{ key, label, sortable?, filterable?, class? }]
   params: { type: Object, default: () => ({}) },
   checkable: { type: Boolean, default: false },
   search: { type: String, default: '' },
   name: { type: String, required: true },
   cached: { type: Boolean, default: false },
   showReloadButton: { type: Boolean, default: true },
-  viewMode: { type: String, default: 'table' },
+  viewMode: { type: String, default: 'table' }, // 'table' | 'grid'
   gridClass: { type: String, default: 'grid grid-cols-2 lg:grid-cols-3 gap-4' },
   clickRowToOpen:  { type: Boolean, default: false },
   previewRowId:    { type: [String, Number], default: null },
   previewMode:     { type: Boolean, default: false },
-  showPerPage:     { type: Boolean, default: false },
+  pinnedColumns:   { type: Object, default: null }, // { left?: string[], right?: string[] }
 })
 
 const emit = defineEmits(['update:search', 'row-click', 'loaded', 'page-change', 'per-page-change'])
 const instance = getCurrentInstance()
 
+// ─── API / toast ─────────────────────────────────────────────────────────────
 const api = useApi()
 const toast = useToast()
 
+// ─── Local data ───────────────────────────────────────────────────────────────
 const tableData = ref([])
 const rowCount = ref(0)
 const loading = ref(false)
@@ -45,6 +48,7 @@ const skeletonRows = computed(() => {
 })
 const isGridView = computed(() => props.viewMode === 'grid')
 
+// ─── TanStack state ───────────────────────────────────────────────────────────
 const pagination = ref({ pageIndex: 0, pageSize: 10 })
 const sorting = ref([])
 const columnFilters = ref([])
@@ -53,12 +57,14 @@ const columnOrder = ref([])
 const columnSizing = ref({})
 const columnSizingInfo = ref({})
 const rowSelection = ref({})
+const columnPinning = ref({ left: [], right: [] })
 const isCustomPerPage = ref(false)
 
 const makeUpdater = (stateRef) => (updater) => {
   stateRef.value = typeof updater === 'function' ? updater(stateRef.value) : updater
 }
 
+// ─── Column definitions ───────────────────────────────────────────────────────
 const buildColumnDefs = () => {
   const defs = []
   if (props.checkable) {
@@ -94,6 +100,7 @@ const columnDefs = buildColumnDefs()
 
 const hasFilterableColumns = computed(() => props.columns.some(c => c.filterable))
 
+// ─── TanStack table instance ──────────────────────────────────────────────────
 const table = useVueTable({
   get data() { return tableData.value },
   get rowCount() { return rowCount.value },
@@ -107,6 +114,7 @@ const table = useVueTable({
     get columnSizing() { return columnSizing.value },
     get columnSizingInfo() { return columnSizingInfo.value },
     get rowSelection() { return rowSelection.value },
+    get columnPinning() { return columnPinning.value },
   },
   onPaginationChange: makeUpdater(pagination),
   onSortingChange: makeUpdater(sorting),
@@ -116,9 +124,11 @@ const table = useVueTable({
   onColumnSizingChange: makeUpdater(columnSizing),
   onColumnSizingInfoChange: makeUpdater(columnSizingInfo),
   onRowSelectionChange: makeUpdater(rowSelection),
+  onColumnPinningChange: makeUpdater(columnPinning),
   getCoreRowModel: getCoreRowModel(),
   columnResizeMode: 'onChange',
   enableColumnResizing: true,
+  enableColumnPinning: true,
   manualPagination: true,
   manualSorting: true,
   manualFiltering: true,
@@ -127,6 +137,59 @@ const table = useVueTable({
   enableRowSelection: true,
 })
 
+// ─── Column pinning helpers ───────────────────────────────────────────────────
+const pinColumn = (key, position) => {
+  table.getColumn(key)?.pin(position)
+}
+
+const getPinnedStyles = (column, isHeader = false) => {
+  const pinned = column.getIsPinned()
+  if (!pinned) return {}
+  const z = isHeader ? 2 : 1
+  const w = column.getSize() + 'px'
+  // Headers always use the solid card background.
+  // Body cells use --row-bg, which is set to solid colors only (normal + hover) via <style scoped>.
+  // Selected/preview rows intentionally don't set --row-bg so sticky cells fall back to --card,
+  // which prevents semi-transparent tints from bleeding through the sticky cell.
+  const bg = isHeader ? 'var(--card, #fff)' : 'var(--row-bg, var(--card, #fff))'
+  const base = {
+    position: 'sticky',
+    zIndex: z,
+    background: bg,
+    width: w,
+    minWidth: w,
+    maxWidth: w,
+  }
+  // inset box-shadow: paints inside the cell so it can't be covered by adjacent cells
+  // and always follows the visual sticky position (unlike border or outset box-shadow)
+  if (pinned === 'left') return { ...base, left: column.getStart('left') + 'px', boxShadow: 'inset -1px 0 0 0 var(--card-line, #e5e7eb)' }
+  if (pinned === 'right') return { ...base, right: column.getAfter('right') + 'px', boxShadow: 'inset 1px 0 0 0 var(--card-line, #e5e7eb)' }
+  return {}
+}
+
+
+// Initialize pinning from prop if provided
+onMounted(() => {
+  if (props.pinnedColumns) {
+    columnPinning.value = {
+      left: props.pinnedColumns.left ?? [],
+      right: props.pinnedColumns.right ?? [],
+    }
+  }
+})
+
+// Keep 'select' always first in the left pinning array.
+// Fires synchronously so the colgroup/headers never render in wrong order.
+watch(() => columnPinning.value.left, (left) => {
+  if (props.checkable && left.includes('select') && left[0] !== 'select') {
+    columnPinning.value = {
+      ...columnPinning.value,
+      left: ['select', ...left.filter(id => id !== 'select')],
+    }
+  }
+}, { flush: 'sync' })
+
+// ─── Fetch ────────────────────────────────────────────────────────────────────
 const buildRequestParams = () => {
   const { sort, ...otherParams } = props.params
   return {
@@ -165,12 +228,14 @@ const fetchData = async () => {
   }
 }
 
+// ─── Scheduled fetch (deduplicates concurrent state changes) ─────────────────
 let fetchTimeout = null
 const scheduleFetch = (delay = 0) => {
   if (fetchTimeout) clearTimeout(fetchTimeout)
   fetchTimeout = setTimeout(() => fetchData(), delay)
 }
 
+// ─── Cache ────────────────────────────────────────────────────────────────────
 const cacheKey = computed(() => {
   if (!props.cached || !props.name) return null
   const base = `full_table_${props.name}`
@@ -216,6 +281,7 @@ const clearCache = () => {
   if (cacheKey.value) sessionStorage.removeItem(cacheKey.value)
 }
 
+// ─── Restore guard (prevents watchers from triggering fetch during restore) ───
 const isRestoring = ref(false)
 
 const loadFromCacheOnMount = async () => {
@@ -244,6 +310,7 @@ const loadFromCacheOnMount = async () => {
   return true
 }
 
+// ─── Watchers ─────────────────────────────────────────────────────────────────
 watch(tableData, (newData) => {
   if (newData.length > 0 && tableBodyRef.value) {
     const firstDataRow = Array.from(tableBodyRef.value.children).find(el => el.dataset.rowType === 'data')
@@ -278,6 +345,7 @@ watch(() => props.params, () => {
   scheduleFetch(0)
 }, { deep: true })
 
+// ─── Lifecycle ────────────────────────────────────────────────────────────────
 const initColumnOrder = () => {
   const ids = props.checkable ? ['select'] : []
   for (const col of props.columns) ids.push(col.key)
@@ -299,12 +367,15 @@ onBeforeUnmount(() => {
   if (props.cached && tableData.value.length > 0) saveToCache()
 })
 
+// ─── Column settings panel ────────────────────────────────────────────────────
 const setColumnOrder = (order) => { columnOrder.value = order }
 
+// ─── Header drag reorder ──────────────────────────────────────────────────────
 let draggedHeaderId = null
 const dragOverHeaderId = ref(null)
 const resizeHoverId = ref(null)
 
+// ─── Column auto-size on double click ─────────────────────────────────────────
 const _canvas = typeof document !== 'undefined' ? document.createElement('canvas') : null
 const _ctx = _canvas?.getContext('2d')
 
@@ -343,6 +414,7 @@ const onHeaderDrop = (colId) => {
   if (from < 0 || to < 0) return
   order.splice(from, 1)
   order.splice(to, 0, draggedHeaderId)
+  // keep 'select' pinned first
   const selIdx = order.indexOf('select')
   if (selIdx > 0) { order.splice(selIdx, 1); order.unshift('select') }
   columnOrder.value = order
@@ -350,6 +422,7 @@ const onHeaderDrop = (colId) => {
   dragOverHeaderId.value = null
 }
 
+// ─── Row selection ────────────────────────────────────────────────────────────
 const getSelectedRows = () => {
   const selected = table.getSelectedRowModel().rows.map(r => r.original)
   return table.getIsAllRowsSelected()
@@ -357,6 +430,7 @@ const getSelectedRows = () => {
     : { meta: { all: false }, rows: selected }
 }
 
+// ─── Export ───────────────────────────────────────────────────────────────────
 const exportTable = async (format, exportAllPages, exportFilteredRows, selectedIds = null) => {
   const { download } = useDownload()
   const id = crypto.randomUUID()
@@ -401,6 +475,7 @@ const exportTable = async (format, exportAllPages, exportFilteredRows, selectedI
   }
 }
 
+// ─── Per-page ─────────────────────────────────────────────────────────────────
 const handlePerPageChange = (val) => {
   if (val === 'custom') { isCustomPerPage.value = true; return }
   table.setPageSize(parseInt(val))
@@ -411,6 +486,7 @@ const resetPerPage = () => {
   if (![10, 25, 50, 100].includes(pagination.value.pageSize)) table.setPageSize(10)
 }
 
+// ─── Row click ────────────────────────────────────────────────────────────────
 const hasRowClickListener = computed(() => !!instance?.vnode?.props?.onRowClick)
 const isRowClickEnabled = computed(() => props.clickRowToOpen || props.previewMode || hasRowClickListener.value)
 
@@ -439,6 +515,24 @@ const handleRowKeydown = (row, e) => {
   emit('row-click', row.original, e)
 }
 
+// Compute --row-bg for pinned (sticky) cells.
+// Non-pinned cells get background from Tailwind classes on <tr>.
+// Pinned cells inherit --row-bg which must be a solid opaque color (no transparency → no bleed-through).
+// color-mix() blends the Tailwind tint with the card color to produce an opaque equivalent.
+// For normal/hover rows the <style scoped> CSS rule handles it; selected/preview override via inline style.
+const pinnedRowStyle = (row) => {
+  if (props.previewRowId && row.original.id === props.previewRowId) {
+    // !bg-indigo-50 → solid indigo-50
+    return { '--row-bg': 'color-mix(in srgb, #eef2ff 100%, var(--card, #fff))' }
+  }
+  if (row.getIsSelected()) {
+    // bg-indigo-50/40 → 40% indigo-50 blended with card
+    return { '--row-bg': 'color-mix(in srgb, #eef2ff 40%, var(--card, #fff))' }
+  }
+  return {}
+}
+
+// ─── Expose ───────────────────────────────────────────────────────────────────
 const reloadTable = () => {
   clearCache()
   isDataFromCache.value = false
@@ -456,6 +550,8 @@ defineExpose({
   isDataFromCache,
   cached: computed(() => props.cached),
   paginationBarRef,
+  columnPinning,
+  pinColumn,
 })
 </script>
 
@@ -469,50 +565,60 @@ defineExpose({
         :style="{ tableLayout: 'fixed', width: table.getTotalSize() + 'px', minWidth: '100%' }"
       >
         <colgroup>
+          <!-- Must use pinning order (left|center|right) — same as getHeaderGroups() and row.getVisibleCells() -->
           <col
-            v-for="col in table.getVisibleLeafColumns()"
+            v-for="col in [...table.getLeftVisibleLeafColumns(), ...table.getCenterVisibleLeafColumns(), ...table.getRightVisibleLeafColumns()]"
             :key="col.id"
             :style="{ width: col.getSize() + 'px' }"
           >
         </colgroup>
-        <thead class="relative z-20 bg-background">
+        <thead class="relative z-20 bg-card">
           <template v-for="headerGroup in table.getHeaderGroups()" :key="headerGroup.id">
-            <tr>
+            <!-- Main header row -->
+            <tr class="bg-card">
               <th
                 v-for="header in headerGroup.headers"
                 :key="header.id"
                 scope="col"
-                :draggable="header.id !== 'select' && resizeHoverId !== header.id"
-                @dragstart="header.id !== 'select' && resizeHoverId !== header.id && onHeaderDragStart(header.id)"
+                :draggable="header.id !== 'select' && resizeHoverId !== header.id && !header.column.getIsPinned()"
+                @dragstart="header.id !== 'select' && resizeHoverId !== header.id && !header.column.getIsPinned() && onHeaderDragStart(header.id)"
                 @dragover="header.id !== 'select' && onHeaderDragOver($event, header.id)"
                 @dragleave="onHeaderDragLeave"
                 @drop="header.id !== 'select' && onHeaderDrop(header.id)"
-                class="relative overflow-hidden"
+                class="relative"
                 :class="[
                   header.id === 'select' ? 'text-center' : '',
-                  dragOverHeaderId === header.id ? 'bg-primary/5 dark:bg-primary/10' : '',
+                  dragOverHeaderId === header.id ? 'bg-indigo-50 dark:bg-indigo-900/20' : '',
                   header.column.getCanSort() ? 'cursor-pointer select-none' : '',
                 ]"
+                :style="getPinnedStyles(header.column, true)"
                 @click="header.column.getCanSort() && header.column.toggleSorting()"
               >
+                <!-- Select all checkbox -->
                 <template v-if="header.id === 'select'">
                   <input
                     type="checkbox"
                     :checked="table.getIsAllRowsSelected()"
                     :indeterminate="table.getIsSomeRowsSelected()"
                     @change="table.getToggleAllRowsSelectedHandler()($event)"
-                    class="mx-2 shrink-0 border-card-line rounded-sm text-primary focus:ring-0 focus:ring-offset-0 dark:bg-card"
+                    class="mx-2 shrink-0 border-card-line rounded-sm text-blue-900 focus:ring-0 focus:ring-offset-0 dark:bg-card"
                   />
                 </template>
+                <!-- Regular column header -->
                 <template v-else>
-                  <div class="px-4 py-3 flex items-center gap-x-1 text-xs font-medium text-muted-foreground w-full">
-                    {{ header.column.columnDef.meta?.label ?? header.id }}
+                  <div
+                    class="px-4 py-3 flex items-center gap-x-1 text-xs font-medium w-full overflow-hidden"
+                    :class="header.column.getIsPinned() ? 'text-foreground' : 'text-muted-foreground'"
+                  >
+                    <IconPin v-if="header.column.getIsPinned()" class="size-3 shrink-0 text-indigo-400 dark:text-indigo-500" />
+                    <span class="truncate">{{ header.column.columnDef.meta?.label ?? header.id }}</span>
                     <span v-if="header.column.getCanSort()">
                       <IconSelector v-if="!header.column.getIsSorted()" class="size-4 opacity-40" />
                       <IconChevronDown v-else-if="header.column.getIsSorted() === 'desc'" class="size-4" />
                       <IconChevronUp v-else class="size-4" />
                     </span>
                   </div>
+                  <!-- Resize handle -->
                   <div
                     v-if="header.column.getCanResize()"
                     class="absolute right-0 top-0 h-full w-3 cursor-col-resize group/rz flex items-center justify-center select-none touch-none"
@@ -527,14 +633,15 @@ defineExpose({
                     <div
                       class="h-4 w-px transition-all"
                       :class="header.column.getIsResizing()
-                        ? 'bg-primary/60 !w-0.5'
-                        : 'bg-surface-1 group-hover/rz:bg-primary/40 dark:group-hover/rz:bg-primary group-hover/rz:w-0.5'"
+                        ? 'bg-indigo-400 dark:bg-indigo-500 !w-0.5'
+                        : 'bg-surface-1 group-hover/rz:bg-indigo-300 dark:group-hover/rz:bg-indigo-600 group-hover/rz:w-0.5'"
                     />
                   </div>
                 </template>
               </th>
             </tr>
 
+            <!-- Column filter row -->
             <tr
               v-if="hasFilterableColumns"
               class="border-b border-card-line bg-muted/50"
@@ -542,14 +649,17 @@ defineExpose({
               <th
                 v-for="header in headerGroup.headers"
                 :key="'f-' + header.id"
-                :class="header.id === 'select' ? 'w-12' : 'px-3 py-1.5'"
+                :class="[
+                  header.id === 'select' ? 'w-12' : 'px-3 py-1.5',
+                ]"
+                :style="getPinnedStyles(header.column, true)"
               >
                 <input
                   v-if="header.column.getCanFilter()"
                   :value="header.column.getFilterValue() ?? ''"
                   @input="(e) => header.column.setFilterValue(e.target.value || undefined)"
                   :placeholder="`Filtrar ${header.column.columnDef.meta?.label ?? ''}...`"
-                  class="w-full bg-card border border-card-line rounded-lg text-xs text-muted-foreground-1 px-2.5 py-1 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                  class="w-full bg-card border border-card-line rounded-lg text-xs text-muted-foreground-1 px-2.5 py-1 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 dark:focus:border-indigo-500 outline-none transition-all"
                 />
               </th>
             </tr>
@@ -562,44 +672,46 @@ defineExpose({
             v-if="loading"
             v-for="(_, i) in skeletonRows"
             :key="'sk-' + i"
-            class="animate-pulse bg-background"
+            class="animate-pulse bg-card"
           >
             <td
               v-for="header in (table.getHeaderGroups()[0]?.headers ?? [])"
               :key="'skc-' + header.id"
-              :class="header.id === 'select' ? 'text-center w-12' : 'px-4'"
-              :style="{ height: lastRowHeight + 'px' }"
+              :class="[
+                header.id === 'select' ? 'text-center w-12' : 'px-4 overflow-hidden',
+              ]"
+              :style="{ height: lastRowHeight + 'px', ...getPinnedStyles(header.column) }"
             >
               <div v-if="header.id === 'select'" class="w-4 h-4 bg-surface-1 rounded mx-auto"></div>
               <div v-else class="h-4 w-[50%] rounded bg-surface-1"></div>
             </td>
           </tr>
 
-          <!-- Loading filler rows -->
+          <!-- Loading filler rows: pad to pageSize so table height doesn't change -->
           <tr
             v-if="loading && skeletonRows.length < pagination.pageSize"
             v-for="i in (pagination.pageSize - skeletonRows.length)"
             :key="'lf-' + i"
-            class="bg-background"
+            class="bg-card"
           >
             <td
               v-for="header in (table.getHeaderGroups()[0]?.headers ?? [])"
               :key="'lfc-' + header.id"
-              :style="{ height: lastRowHeight + 'px' }"
+              :style="{ height: lastRowHeight + 'px', ...getPinnedStyles(header.column) }"
             />
           </tr>
 
-          <!-- Empty filler rows -->
+          <!-- Empty filler rows: maintain table height when no results -->
           <tr
             v-if="!loading && tableData.length === 0"
             v-for="i in pagination.pageSize"
             :key="'esk-' + i"
-            class="bg-background"
+            class="bg-card"
           >
             <td
               v-for="header in (table.getHeaderGroups()[0]?.headers ?? [])"
               :key="'eskc-' + header.id"
-              :style="{ height: lastRowHeight + 'px' }"
+              :style="{ height: lastRowHeight + 'px', ...getPinnedStyles(header.column) }"
             />
           </tr>
 
@@ -612,12 +724,13 @@ defineExpose({
             @click="(e) => handleRowClick(row, e)"
             @keydown="(e) => handleRowKeydown(row, e)"
             :tabindex="isRowClickEnabled ? 0 : undefined"
-            class="bg-background hover:bg-layer-hover transition-colors"
+            class="bg-card hover:bg-layer-hover transition-colors"
             :class="{
               'cursor-pointer': isRowClickEnabled,
-              'bg-primary/5 dark:bg-primary/10 hover:bg-primary/10': row.getIsSelected(),
-              '!bg-primary/10 dark:!bg-primary/15 ring-1 ring-inset ring-primary/30 dark:ring-primary/40': previewRowId && row.original.id === previewRowId,
+              'bg-indigo-50/40 dark:bg-indigo-900/10 hover:bg-indigo-50/60': row.getIsSelected(),
+              '!bg-indigo-50 dark:!bg-indigo-900/20 ring-1 ring-inset ring-indigo-200 dark:ring-indigo-700': previewRowId && row.original.id === previewRowId,
             }"
+            :style="pinnedRowStyle(row)"
           >
             <td
               v-for="cell in row.getVisibleCells()"
@@ -625,11 +738,13 @@ defineExpose({
               :data-col-id="cell.column.id"
               :class="[
                 cell.column.id === 'select'
-                  ? 'text-center w-12'
-                  : 'px-4 py-3 text-sm text-muted-foreground-1',
+                  ? 'text-center w-12 overflow-hidden'
+                  : 'px-4 py-3 text-sm text-muted-foreground-1 overflow-hidden',
                 cell.column.id !== 'select' ? cell.column.columnDef.meta?.class ?? '' : '',
               ]"
+              :style="getPinnedStyles(cell.column)"
             >
+              <!-- Select checkbox -->
               <template v-if="cell.column.id === 'select'">
                 <div @click.stop>
                   <input
@@ -641,6 +756,7 @@ defineExpose({
                   />
                 </div>
               </template>
+              <!-- Data cell with slot -->
               <template v-else>
                 <slot :name="cell.column.id" :row="row.original" :value="cell.getValue()">
                   {{ cell.getValue() }}
@@ -649,25 +765,26 @@ defineExpose({
             </td>
           </tr>
 
-          <!-- Filler rows -->
+          <!-- Filler rows: pad table to full page height when data < perPage -->
           <tr
             v-if="!loading && tableData.length > 0 && tableData.length < pagination.pageSize"
             v-for="i in (pagination.pageSize - tableData.length)"
             :key="'fill-' + i"
-            class="bg-background"
+            class="bg-card"
           >
             <td
               v-for="header in (table.getHeaderGroups()[0]?.headers ?? [])"
               :key="'fillc-' + header.id"
-              :style="{ height: lastRowHeight + 'px' }"
+              :style="{ height: lastRowHeight + 'px', ...getPinnedStyles(header.column) }"
             />
           </tr>
         </tbody>
       </table>
 
+      <!-- Empty state overlays -->
       <div
         v-if="!loading && tableData.length === 0 && !search && !columnFilters.length"
-        class="absolute inset-0 z-10 pointer-events-none flex items-center justify-center backdrop-blur-sm bg-background/60 rounded-xl"
+        class="absolute inset-0 z-10 pointer-events-none flex items-center justify-center backdrop-blur-sm bg-card/60 rounded-xl"
       >
         <slot name="empty">
           <p class="text-muted-foreground text-lg font-medium italic">No hay registros</p>
@@ -676,7 +793,7 @@ defineExpose({
 
       <div
         v-if="!loading && tableData.length === 0 && (search || columnFilters.length)"
-        class="absolute inset-0 z-10 pointer-events-none flex items-center justify-center backdrop-blur-sm bg-background/60 rounded-xl"
+        class="absolute inset-0 z-10 pointer-events-none flex items-center justify-center backdrop-blur-sm bg-card/60 rounded-xl"
       >
         <slot name="empty-search">
           <p class="text-muted-foreground text-lg font-medium italic">No hay registros en la búsqueda</p>
@@ -712,7 +829,7 @@ defineExpose({
           :toggle-row="() => row.toggleSelected()"
         >
           <div class="bg-card rounded-lg border border-card-line p-4 hover:shadow-md transition-shadow relative"
-            :class="{ 'ring-2 ring-primary/60': row.getIsSelected() }">
+            :class="{ 'ring-2 ring-indigo-400 dark:ring-indigo-600': row.getIsSelected() }">
             <div v-if="checkable" class="absolute top-2 left-2 z-10">
               <input type="checkbox" :checked="row.getIsSelected()" @change="row.toggleSelected()"
                 class="rounded border-card-line dark:bg-card" />
@@ -739,9 +856,11 @@ defineExpose({
       </div>
     </div>
 
-    <!-- Pagination bar -->
+    <!-- Pagination & controls bar -->
     <div ref="paginationBarRef" class="flex flex-col sm:flex-row items-center justify-between gap-y-4 sm:gap-y-0 px-4 py-3 border-t border-card-line">
+      <!-- Left: reload, total, cache, columns button -->
       <div class="flex items-center gap-x-4 flex-wrap gap-y-2">
+        <!-- Reload button -->
         <div v-if="showReloadButton" class="flex items-center gap-x-2">
           <IconReload
             v-if="!loading"
@@ -756,8 +875,10 @@ defineExpose({
           </div>
         </div>
 
+        <!-- Total records -->
         <p class="text-sm text-foreground font-medium">{{ rowCount }} registros</p>
 
+        <!-- Cache badge -->
         <div v-if="isDataFromCache && cached" class="group relative flex items-center">
           <div class="flex items-center gap-x-1.5 py-1 px-2.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 rounded-lg cursor-help hover:bg-emerald-500/20 transition-colors">
             <IconBolt class="size-3.5 fill-current" />
@@ -771,10 +892,13 @@ defineExpose({
             <div class="absolute top-full left-4 -mt-1 border-4 border-transparent border-t-slate-900"></div>
           </div>
         </div>
+
       </div>
 
+      <!-- Right: per-page + pagination -->
       <div class="flex items-center gap-x-8">
-        <div v-if="showPerPage" class="flex items-center gap-x-2">
+        <!-- Per page selector -->
+        <div class="flex items-center gap-x-2">
           <label class="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Filas:</label>
           <select
             v-if="!isCustomPerPage"
@@ -794,12 +918,13 @@ defineExpose({
               :value="pagination.pageSize"
               @change="(e) => table.setPageSize(parseInt(e.target.value) || 10)"
               min="1" max="500"
-              class="w-14 bg-surface border-none text-[11px] font-bold text-muted-foreground-1 rounded-lg focus:ring-2 focus:ring-primary/20 py-1 px-2"
+              class="w-14 bg-surface border-none text-[11px] font-bold text-muted-foreground-1 rounded-lg focus:ring-2 focus:ring-indigo-500/20 py-1 px-2"
             />
-            <button @click="resetPerPage" class="text-[10px] text-primary font-bold hover:underline">Volver</button>
+            <button @click="resetPerPage" class="text-[10px] text-indigo-500 font-bold hover:underline">Volver</button>
           </div>
         </div>
 
+        <!-- Pagination nav -->
         <nav class="flex justify-end items-center gap-x-1" aria-label="Pagination">
           <button
             type="button"
@@ -833,3 +958,17 @@ defineExpose({
     </div>
   </div>
 </template>
+
+<style scoped>
+/* --row-bg drives the background of sticky (pinned) body cells.
+   Only solid, opaque values here — semi-transparent tints for selected/preview
+   rows intentionally do NOT override --row-bg, so pinned cells stay opaque
+   and text from scrolling content can't bleed through. */
+tbody tr {
+  --row-bg: var(--card, #fff);
+}
+tbody tr:hover {
+  --row-bg: var(--layer-hover, #f8fafc);
+}
+</style>
+
