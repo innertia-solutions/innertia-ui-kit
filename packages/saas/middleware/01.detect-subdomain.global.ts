@@ -12,10 +12,17 @@ export default defineNuxtRouteMiddleware((to) => {
 
   const parts = hostname.split('.')
 
-  // Hostname bare (localhost, IP) sin subdominio → usar slug "local" en dev, error en prod
+  // Hostname bare (localhost, IP) sin subdominio → usar slug de NUXT_PUBLIC_DEV_TENANT si está definido, error si no
   const isBareLocalhost = hostname === 'localhost' || /^\d+(\.\d+){3}$/.test(hostname)
 
   if (isBareLocalhost) {
+    const devTenant = (config.public as any).devTenant as string | undefined
+    if (devTenant) {
+      useState<string>('tenantSlug', () => '').value = devTenant
+      const tenantStore = useTenantStore()
+      tenantStore.setSlug(devTenant)
+      return
+    }
     return navigateTo('/tenant-error?reason=no-subdomain')
   }
 
