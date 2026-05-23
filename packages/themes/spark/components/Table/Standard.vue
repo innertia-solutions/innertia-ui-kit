@@ -83,9 +83,37 @@ const activeFilterList = computed(() =>
 
 const activeFilterCount = computed(() => activeFilterList.value.length)
 
+// Columns NOT yet filtered — what appears in the picker (already-active columns are hidden)
+const availableFilterColumns = computed(() =>
+  filtersConfig.value.filter(col => {
+    const v = activeFilters.value[col.key]
+    if (col.filterType === 'daterange') return !v?.from && !v?.to
+    return v === null || v === undefined || v === ''
+  })
+)
+
+// Convert activeFilters to enriched [{field, operator, value}] for the backend DataTable
+const enrichedFilters = computed(() => {
+  const result = []
+  for (const col of filtersConfig.value) {
+    const v = activeFilters.value[col.key]
+    if (v === null || v === undefined || v === '') continue
+    if (col.filterType === 'daterange') {
+      if (!v?.from && !v?.to) continue
+      if (v.from) result.push({ field: col.key, operator: 'after',  value: v.from })
+      if (v.to)   result.push({ field: col.key, operator: 'before', value: v.to })
+    } else if (col.filterType === 'select') {
+      result.push({ field: col.key, operator: 'is', value: v })
+    } else {
+      result.push({ field: col.key, operator: 'contains', value: v })
+    }
+  }
+  return result
+})
+
 const mergedParams = computed(() => ({
   ...props.params,
-  ...activeFilters.value,
+  ...(enrichedFilters.value.length ? { filters: enrichedFilters.value } : {}),
 }))
 
 const removeFilter = (key) => {
@@ -425,23 +453,25 @@ defineExpose({ getSelectedRows, reload, clearCache, exportTable, tableRef, close
       <!-- Slot for custom toolbar buttons -->
       <slot name="toolbar" />
 
-      <!-- Columnas button -->
-      <button
-        ref="columnButtonRef"
-        type="button"
-        @click="showColumnPanel = !showColumnPanel"
-        :class="[
-          'py-1.5 px-3 inline-flex items-center gap-2 text-sm font-medium rounded-lg border transition-colors',
-          showColumnPanel
-            ? 'border-indigo-300 bg-indigo-50 text-indigo-700 dark:bg-indigo-900/20 dark:border-indigo-700 dark:text-indigo-300'
-            : 'border-card-line bg-card text-muted-foreground-1 hover:bg-muted-hover'
-        ]"
-      >
-        <IconLayoutColumns class="size-4" />
-        Columnas
-      </button>
+      <!-- Secondary actions: pushed to the right, icon-only style -->
+      <div class="ml-auto flex items-center gap-1">
+        <button
+          ref="columnButtonRef"
+          type="button"
+          @click="showColumnPanel = !showColumnPanel"
+          :title="'Columnas'"
+          :class="[
+            'p-1.5 inline-flex items-center justify-center rounded-lg border transition-colors',
+            showColumnPanel
+              ? 'border-indigo-300 bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:border-indigo-700 dark:text-indigo-300'
+              : 'border-transparent text-muted-foreground hover:border-card-line hover:bg-muted-hover hover:text-foreground'
+          ]"
+        >
+          <IconLayoutColumns class="size-4" />
+        </button>
 
-      <TableExportable v-if="showExport" :table-ref="tableRef" :name="resolvedName" :columns="columns" />
+        <TableExportable v-if="showExport" :table-ref="tableRef" :name="resolvedName" :columns="columns" />
+      </div>
     </div>
 
     <!-- Filter chips row (shown when filters active) -->
@@ -649,20 +679,24 @@ defineExpose({ getSelectedRows, reload, clearCache, exportTable, tableRef, close
           :style="filterMenuStyle"
         >
 
-          <!-- Step 1: column picker -->
+          <!-- Step 1: column picker (only non-filtered columns shown) -->
           <template v-if="filterMenuStep === 'columns'">
             <p class="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-3 pt-2.5 pb-1">Filtrar por</p>
             <div class="pb-1.5">
-              <button
-                v-for="col in filtersConfig"
-                :key="col.key"
-                type="button"
-                @click.stop="selectFilterColumn(col)"
-                class="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted-hover transition-colors"
-              >
-                <span class="flex-1 text-left text-foreground">{{ col.label }}</span>
-                <span v-if="activeFilters[col.key]" class="text-[10px] font-semibold text-indigo-500 uppercase">activo</span>
-              </button>
+              <template v-if="availableFilterColumns.length">
+                <button
+                  v-for="col in availableFilterColumns"
+                  :key="col.key"
+                  type="button"
+                  @click.stop="selectFilterColumn(col)"
+                  class="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted-hover transition-colors text-left text-foreground"
+                >
+                  {{ col.label }}
+                </button>
+              </template>
+              <p v-else class="px-3 py-3 text-xs text-muted-foreground italic">
+                Todos los filtros están configurados
+              </p>
             </div>
           </template>
 
