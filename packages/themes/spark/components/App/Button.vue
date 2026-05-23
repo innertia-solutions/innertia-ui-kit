@@ -22,22 +22,22 @@ const iconSizeClasses = computed(() => ({ xs:"size-2", sm:"size-3", md:"size-4",
 
 const severityClasses = computed(() => {
   if (props.variant === "dropdown") {
-    const d = { primary:"text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20", secondary:"text-foreground hover:bg-muted-hover", success:"text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/20", danger:"text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20", warning:"text-yellow-600 hover:bg-yellow-50 dark:text-yellow-400 dark:hover:bg-yellow-900/20", info:"text-cyan-600 hover:bg-cyan-50 dark:text-cyan-400 dark:hover:bg-cyan-900/20" }
+    const d = { primary: "text-primary hover:bg-primary/10", secondary:"text-foreground hover:bg-muted-hover", success:"text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/20", danger:"text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20", warning:"text-yellow-600 hover:bg-yellow-50 dark:text-yellow-400 dark:hover:bg-yellow-900/20", info:"text-cyan-600 hover:bg-cyan-50 dark:text-cyan-400 dark:hover:bg-cyan-900/20" }
     return d[props.severity] || d.secondary
   }
   const base = "rounded-lg border transition-colors"
-  const v = { primary:"border-blue-600 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:border-blue-500 dark:bg-blue-900/20 dark:text-blue-300 dark:hover:bg-blue-900/35", secondary:"border-slate-300 bg-slate-50 text-slate-700 hover:bg-muted-hover dark:border-card-line dark:bg-card dark:text-muted-foreground-1 dark:hover:bg-muted-hover", success:"border-emerald-600 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-500 dark:bg-emerald-900/20 dark:text-emerald-300 dark:hover:bg-emerald-900/35", danger:"border-red-600 bg-red-50 text-red-700 hover:bg-red-100 dark:border-red-500 dark:bg-red-900/20 dark:text-red-300 dark:hover:bg-red-900/35", warning:"border-yellow-600 bg-yellow-50 text-yellow-700 hover:bg-yellow-100 dark:border-yellow-500 dark:bg-yellow-900/20 dark:text-yellow-300 dark:hover:bg-yellow-900/35", info:"border-cyan-600 bg-cyan-50 text-cyan-700 hover:bg-cyan-100 dark:border-cyan-500 dark:bg-cyan-900/20 dark:text-cyan-300 dark:hover:bg-cyan-900/35" }
+  const v = { primary: "border-primary bg-primary/10 text-primary hover:bg-primary/20 dark:bg-primary/15 dark:hover:bg-primary/25", secondary:"border-slate-300 bg-slate-50 text-slate-700 hover:bg-muted-hover dark:border-card-line dark:bg-card dark:text-muted-foreground-1 dark:hover:bg-muted-hover", success:"border-emerald-600 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:border-emerald-500 dark:bg-emerald-900/20 dark:text-emerald-300 dark:hover:bg-emerald-900/35", danger:"border-red-600 bg-red-50 text-red-700 hover:bg-red-100 dark:border-red-500 dark:bg-red-900/20 dark:text-red-300 dark:hover:bg-red-900/35", warning:"border-yellow-600 bg-yellow-50 text-yellow-700 hover:bg-yellow-100 dark:border-yellow-500 dark:bg-yellow-900/20 dark:text-yellow-300 dark:hover:bg-yellow-900/35", info:"border-cyan-600 bg-cyan-50 text-cyan-700 hover:bg-cyan-100 dark:border-cyan-500 dark:bg-cyan-900/20 dark:text-cyan-300 dark:hover:bg-cyan-900/35" }
   return `${base} ${v[props.severity] || v.primary}`
 })
 
 const buttonClasses = computed(() => {
   if (props.variant === "dropdown") {
     const dis = props.type === "button" ? "disabled:opacity-50 disabled:pointer-events-none" : isDisabled.value ? "opacity-50 pointer-events-none" : ""
-    return `w-full flex items-center gap-x-3.5 py-2 px-3 rounded-lg text-sm transition-colors text-left ${severityClasses.value} ${dis} focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800 ${props.class}`
+    return `w-full flex items-center gap-x-3.5 py-2 px-3 rounded-lg text-sm transition-colors text-left ${severityClasses.value} ${dis} focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary/40 dark:focus:ring-offset-gray-800 ${props.class}`
   }
   const dis = props.type === "button" ? "disabled:opacity-50 disabled:pointer-events-none" : isDisabled.value ? "opacity-50 pointer-events-none" : ""
   const cursor = props.type === "link" ? "cursor-pointer" : ""
-  return `${sizeClasses.value} ${severityClasses.value} ${dis} focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-gray-800 ${cursor} inline-flex justify-center items-center gap-x-2 whitespace-nowrap ${props.class}`
+  return `${sizeClasses.value} ${severityClasses.value} ${dis} focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-primary/40 dark:focus:ring-offset-gray-800 ${cursor} inline-flex justify-center items-center gap-x-2 whitespace-nowrap ${props.class}`
 })
 
 const displayText = computed(() => props.loading ? props.loadingText : props.text)

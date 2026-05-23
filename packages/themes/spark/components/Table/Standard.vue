@@ -1,5 +1,5 @@
 <script setup>
-import { IconSearch, IconAdjustmentsHorizontal, IconLayoutColumns, IconGripVertical } from '@tabler/icons-vue'
+import { IconSearch, IconAdjustmentsHorizontal, IconLayoutColumns, IconGripVertical, IconMinus, IconMaximize, IconX } from '@tabler/icons-vue'
 
 const props = defineProps({
   table:             { type: Object,  default: null },
@@ -17,6 +17,7 @@ const props = defineProps({
   showExport:        { type: Boolean, default: true },
   filters:           { type: Array,   default: () => [] },
   splitRatio:        { type: Number,  default: 60 },
+  autoClosePreview:  { type: Boolean, default: true },
 })
 
 const resolvedEndpoint = computed(() => props.table?.endpoint ?? props.endpoint)
@@ -61,6 +62,7 @@ const paginationHeight = ref(0)
 const previewCacheKey = computed(() => `table-preview-${resolvedName.value}`)
 
 const previewFromCache = ref(false)
+const previewPanelRef = ref(null)
 const closePreview = () => { previewRow.value = null }
 
 const previewTab  = ref('datos')
@@ -76,6 +78,7 @@ watch(previewRow, () => { previewTab.value = 'datos' })
 
 const handleRowClick = (row) => {
   if (previewEnabled.value) {
+    collapseDock()
     previewRow.value = previewRow.value?.id === row.id ? null : row
   } else {
     emit('row-click', row)
@@ -129,10 +132,74 @@ const startResize = (e) => {
   window.addEventListener('mouseup', onUp)
 }
 
-const onEsc = (e) => { if (e.key === 'Escape' && previewRow.value) closePreview() }
+const onEsc = (e) => { if (e.key === 'Escape') { if (previewRow.value) closePreview(); else collapseDock() } }
+
+// ─── Auto-close preview on outside click ──────────────────────────────────────
+const onDocMousedown = (e) => {
+  if (props.autoClosePreview && previewRow.value && previewPanelRef.value && !previewPanelRef.value.contains(e.target)) {
+    closePreview()
+  }
+}
+
+// ─── Dock (minimizar preview) ──────────────────────────────────────────────────
+const {
+  docked,
+  dock, undock: undockItem, isActive,
+  activeDockId, activeDockRect,
+  expandDock, collapseDock,
+} = useDockedPreviews()
+const route = useRoute()
+
+function minimizePreview() {
+  if (!previewRow.value) return
+  const label    = previewRow.value.name ?? previewRow.value.title ?? previewRow.value.email ?? String(previewRow.value.id)
+  const subtitle = previewRow.value.email ?? previewRow.value.description ?? null
+  dock({
+    id:        `${resolvedName.value}-${previewRow.value.id}`,
+    label,
+    subtitle,
+    row:       { ...previewRow.value },
+    tableName: resolvedName.value,
+    route:     route.path,
+  })
+  closePreview()
+}
+
+// Item que debe mostrarse como mini-preview flotante (pertenece a esta tabla)
+const floatingItem = computed(() =>
+  activeDockId.value
+    ? docked.value.find(d => d.id === activeDockId.value && d.tableName === resolvedName.value) ?? null
+    : null
+)
+
+// Posición del panel flotante: centrado sobre el tab que lo abrió
+const floatingPanelStyle = computed(() => {
+  const rect   = activeDockRect.value
+  const panelW = 384
+  const bottom = 52
+  if (!rect || typeof window === 'undefined') return { bottom: bottom + 'px', right: '16px' }
+  const tabCenter = rect.left + rect.width / 2
+  let right = window.innerWidth - tabCenter - panelW / 2
+  right = Math.max(8, Math.min(right, window.innerWidth - panelW - 8))
+  return { bottom: bottom + 'px', right: right + 'px' }
+})
+
+function expandToFull(item) {
+  previewRow.value = item.row
+  undockItem(item.id)
+}
+
+// Escuchar evento de restauración (fallback cuando la tabla no estaba montada)
+onMounted(() => {
+  useNuxtApp().hooks.hook('preview:restore', (item) => {
+    if (item.tableName === resolvedName.value) previewRow.value = item.row
+  })
+})
+
 onMounted(async () => {
   previewEnabled.value = !!slots.preview
   window.addEventListener('keydown', onEsc)
+  document.addEventListener('mousedown', onDocMousedown)
   // Restore preview from session cache — mark as from-cache to skip enter animation
   if (props.cached && previewEnabled.value) {
     try {
@@ -148,6 +215,7 @@ onMounted(async () => {
 })
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', onEsc)
+  document.removeEventListener('mousedown', onDocMousedown)
   paginationObserver?.disconnect()
 })
 
@@ -224,7 +292,7 @@ const reload          = () => tableRef.value?.reload()
 const clearCache      = () => tableRef.value?.clearCache()
 const exportTable     = (format, allPages, filteredRows) => tableRef.value?.exportTable(format, allPages, filteredRows)
 
-defineExpose({ getSelectedRows, reload, clearCache, exportTable, tableRef })
+defineExpose({ getSelectedRows, reload, clearCache, exportTable, tableRef, closePreview })
 </script>
 
 <template>
@@ -332,6 +400,7 @@ defineExpose({ getSelectedRows, reload, clearCache, exportTable, tableRef })
         >
           <div
             v-if="previewRow && previewEnabled"
+            ref="previewPanelRef"
             class="absolute top-0 right-0 z-30 flex bg-card border-l border-card-line shadow-[-4px_0_16px_rgba(0,0,0,0.06)]"
             :style="{ width: (100 - currentRatio) + '%', bottom: paginationHeight + 'px' }"
           >
@@ -343,9 +412,29 @@ defineExpose({ getSelectedRows, reload, clearCache, exportTable, tableRef })
             <!-- Preview -->
             <div class="flex flex-col flex-1 overflow-hidden">
 
-              <!-- Fixed header — always visible regardless of active tab -->
-              <div v-if="$slots['preview-header']" class="shrink-0 border-b border-card-line">
-                <slot name="preview-header" :row="previewRow" :close="closePreview" />
+              <!-- Barra de acciones del preview -->
+              <div class="shrink-0 flex items-center justify-between gap-2 px-3 py-2 border-b border-card-line">
+                <div class="flex-1 min-w-0">
+                  <slot name="preview-header" :row="previewRow" :close="closePreview" />
+                </div>
+                <div class="flex items-center gap-1 shrink-0">
+                  <button
+                    type="button"
+                    class="inline-flex items-center justify-center size-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted-hover transition-colors"
+                    title="Minimizar"
+                    @click.stop="minimizePreview"
+                  >
+                    <IconMinus class="size-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    class="inline-flex items-center justify-center size-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted-hover transition-colors"
+                    title="Cerrar"
+                    @click.stop="closePreview"
+                  >
+                    <IconX class="size-3.5" />
+                  </button>
+                </div>
               </div>
 
               <!-- Scrollable content -->
@@ -394,6 +483,46 @@ defineExpose({ getSelectedRows, reload, clearCache, exportTable, tableRef })
 
       </div>
     </div>
+
+    <!-- ── Floating mini-preview (dock expand, estilo Gmail) ── -->
+    <Teleport to="body">
+      <Transition
+        enter-active-class="transition ease-out duration-200"
+        enter-from-class="opacity-0 translate-y-4"
+        enter-to-class="opacity-100 translate-y-0"
+        leave-active-class="transition ease-in duration-150"
+        leave-from-class="opacity-100 translate-y-0"
+        leave-to-class="opacity-0 translate-y-4"
+      >
+        <div
+          v-if="floatingItem"
+          class="fixed z-[60] w-96 flex flex-col bg-card border border-card-line rounded-t-xl shadow-2xl overflow-hidden"
+          :style="{ ...floatingPanelStyle, maxHeight: 'min(480px, calc(100vh - 60px))' }"
+        >
+          <div class="flex items-center gap-2 px-3 py-2.5 border-b border-card-line shrink-0 bg-surface select-none">
+            <span class="size-6 rounded-full bg-primary flex items-center justify-center text-[10px] font-bold text-primary-foreground shrink-0">
+              {{ (floatingItem.label?.[0] ?? '?').toUpperCase() }}
+            </span>
+            <div class="flex-1 min-w-0">
+              <p class="text-sm font-semibold text-foreground truncate leading-tight">{{ floatingItem.label }}</p>
+              <p v-if="floatingItem.subtitle" class="text-xs text-muted-foreground truncate">{{ floatingItem.subtitle }}</p>
+            </div>
+            <button type="button" title="Expandir" class="inline-flex items-center justify-center size-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted-hover transition-colors" @click.stop="expandToFull(floatingItem)">
+              <IconMaximize class="size-3.5" />
+            </button>
+            <button type="button" title="Minimizar" class="inline-flex items-center justify-center size-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted-hover transition-colors" @click.stop="collapseDock()">
+              <IconMinus class="size-3.5" />
+            </button>
+            <button type="button" title="Cerrar" class="inline-flex items-center justify-center size-6 rounded-md text-muted-foreground hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" @click.stop="undockItem(floatingItem.id)">
+              <IconX class="size-3.5" />
+            </button>
+          </div>
+          <div class="flex-1 overflow-y-auto min-h-0">
+            <slot name="preview" :row="floatingItem.row" :close="() => undockItem(floatingItem.id)" />
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
 
     <!-- Column panel — teleported to body to escape overflow-hidden -->
     <Teleport to="body">

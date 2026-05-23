@@ -25,10 +25,13 @@ const iconColorClass = computed(() => ({
 </script>
 
 <template>
-  <div class="space-y-4">
+  <div class="relative space-y-2">
 
     <!-- Page header card -->
     <div v-if="title" class="sticky top-0 z-20 -mx-3 -mt-3 px-3 pt-3 bg-background-1">
+    <div v-if="$slots.breadcrumb" class="flex items-center gap-x-1 px-1 pt-2 pb-0.5">
+      <slot name="breadcrumb" />
+    </div>
     <div class="flex items-center justify-between bg-card border border-card-line rounded-2xl shadow-sm px-4 py-3">
       <div class="flex items-center gap-x-4 min-w-0">
         <div v-if="iconComponent" class="shrink-0 size-10 rounded-xl flex items-center justify-center border border-current/15" :class="iconColorClass">
@@ -41,9 +44,6 @@ const iconColorClass = computed(() => ({
               <span class="size-1 rounded-full bg-surface-1 shrink-0 self-center hidden sm:block" />
               <p class="text-sm text-muted-foreground">{{ description }}</p>
             </template>
-          </div>
-          <div v-if="$slots.breadcrumb" class="flex items-center gap-x-1 mt-0.5">
-            <slot name="breadcrumb" />
           </div>
         </div>
       </div>
@@ -59,7 +59,7 @@ const iconColorClass = computed(() => ({
     </div>
 
     <!-- Page content -->
-    <slot />
+    <div class="relative"><slot /></div>
 
   </div>
 </template>
